@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>今天吃什么</title>
+    <style>
+        :root {
+            --background-color: #f0f2f5;
+            --card-background: #ffffff;
+            --primary-text-color: #1c1e21;
+            --secondary-text-color: #606770;
+            --accent-color: #007aff;
+            --accent-color-hover: #0056b3;
+            --border-color: #dddfe2;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--primary-text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding-bottom: 80px; /* Space for bottom nav */
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+
+        .card {
+            background-color: var(--card-background);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            margin-bottom: 20px;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        h1, h2 {
+            color: var(--primary-text-color);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .view {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .config-section, .recommendation-section, .selection-section, .search-section, .favorites-section {
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-weight: 600;
+            color: var(--secondary-text-color);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        input[type="number"], input[type="text"] {
+            flex-grow: 1;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input[type="number"]:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        }
+
+        .btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn:hover {
+            background-color: var(--accent-color-hover);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background-color: #e4e6eb;
+            color: var(--primary-text-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: #d8dbdf;
+        }
+
+        .dish-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .dish-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .dish-item:last-child {
+            border-bottom: none;
+        }
+
+        .dish-item span {
+            font-size: 17px;
+        }
+
+        .category-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: var(--primary-text-color);
+        }
+
+        .nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--card-background);
+            display: flex;
+            justify-content: space-around;
+            box-shadow: 0 -2px 10px var(--shadow-color);
+            border-top: 1px solid var(--border-color);
+            padding: 10px 0;
+        }
+
+        .nav-btn {
+            background: none;
+            border: none;
+            color: var(--secondary-text-color);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 8px;
+            transition: color 0.2s, background-color 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .nav-btn .icon {
+            font-size: 22px; /* Adjust as needed */
+        }
+
+        .nav-btn.active {
+            color: var(--accent-color);
+        }
+        
+        .favorite-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 24px;
+            color: var(--secondary-text-color);
+            transition: color 0.2s, transform 0.2s;
+        }
+
+        .favorite-btn.favorited {
+            color: #ff453a; /* iOS red */
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="app-title">今天吃什么？</h1>
+
+        <div id="config-view" class="view">
+            <div class="card">
+                <h2>用户配置</h2>
+                <div class="config-section">
+                    <label for="people-count">家庭用餐人数：</label>
+                    <div class="input-group">
+                        <input type="number" id="people-count" min="1" value="3">
+                        <button id="save-config-btn" class="btn">保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="recommendation-view" class="view active">
+            <div class="card">
+                <h2>今日菜单</h2>
+                <div id="recommendation-output" class="recommendation-section"></div>
+                <button id="generate-random-btn" class="btn" style="width: 100%; margin-bottom: 10px;">随机生成</button>
+                <button id="clear-menu-btn" class="btn btn-secondary" style="width: 100%;">清空菜单</button>
+            </div>
+        </div>
+
+        <div id="selection-view" class="view">
+            <div class="card">
+                <h2>自主选择</h2>
+                <div id="selection-output" class="selection-section"></div>
+            </div>
+        </div>
+
+        <div id="search-view" class="view">
+            <div class="card">
+                <h2>搜索菜品</h2>
+                <div class="search-section">
+                    <input type="text" id="search-input" placeholder="输入菜名或拼音搜索...">
+                    <div id="search-results" class="dish-list" style="margin-top: 15px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="favorites-view" class="view">
+            <div class="card">
+                <h2>我的收藏</h2>
+                <div id="favorites-output" class="favorites-section"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="nav">
+        <button id="nav-recommendation" class="nav-btn active"><span class="icon">🌟</span>今日菜单</button>
+        <button id="nav-selection" class="nav-btn"><span class="icon">📖</span>自主选择</button>
+        <button id="nav-search" class="nav-btn"><span class="icon">🔍</span>搜索</button>
+        <button id="nav-favorites" class="nav-btn"><span class="icon">❤️</span>我的收藏</button>
+        <button id="nav-config" class="nav-btn"><span class="icon">⚙️</span>设置</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Element Declarations
+            const peopleCountInput = document.getElementById('people-count');
+            const recommendationOutput = document.getElementById('recommendation-output');
+            const selectionOutput = document.getElementById('selection-output');
+            const searchInput = document.getElementById('search-input');
+            const searchResults = document.getElementById('search-results');
+            const favoritesOutput = document.getElementById('favorites-output');
+            const saveConfigBtn = document.getElementById('save-config-btn');
+            const clearMenuBtn = document.getElementById('clear-menu-btn');
+            const generateRandomBtn = document.getElementById('generate-random-btn');
+            const navRecommendation = document.getElementById('nav-recommendation');
+            const navSelection = document.getElementById('nav-selection');
+            const navSearch = document.getElementById('nav-search');
+            const navFavorites = document.getElementById('nav-favorites');
+            const navConfig = document.getElementById('nav-config');
+
+            const views = {
+                'recommendation': document.getElementById('recommendation-view'),
+                'selection': document.getElementById('selection-view'),
+                'search': document.getElementById('search-view'),
+                'favorites': document.getElementById('favorites-view'),
+                'config': document.getElementById('config-view')
+            };
+
+            const navButtons = {
+                'recommendation': navRecommendation,
+                'selection': navSelection,
+                'search': navSearch,
+                'favorites': navFavorites,
+                'config': navConfig
+            };
+
+            let userConfig = { peopleCount: 3 };
+            let favorites = [];
+            let dailyMenu = [];
+
+            const recipeDatabase = [
+                { name: '红烧肉', pinyin: 'hongshaorou', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '可乐鸡翅', pinyin: 'kelejichi', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '酸辣汤', pinyin: 'suanlatang', category: '汤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '米饭', pinyin: 'mifan', category: '主食', recommendedMin: 1, recommendedMax: 10 },
+                { name: '清炒时蔬', pinyin: 'qingchaoshishu', category: '素', recommendedMin: 1, recommendedMax: 3 },
+                { name: '紫菜蛋花汤', pinyin: 'zicaidanhuatang', category: '汤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '扬州炒饭', pinyin: 'yangzhouchaofan', category: '主食', recommendedMin: 1, recommendedMax: 2 },
+                { name: '青椒土豆丝', pinyin: 'qingjiaotudousi', category: '素', recommendedMin: 1, recommendedMax: 4 },
+                { name: '醋溜白菜', pinyin: 'culiubaicai', category: '素', recommendedMin: 1, recommendedMax: 4 },
+                { name: '干煸四季豆', pinyin: 'ganbiansijidou', category: '素', recommendedMin: 2, recommendedMax: 5 },
+                { name: '蒜蓉西兰花', pinyin: 'suanrongxilanhua', category: '素', recommendedMin: 1, recommendedMax: 4 },
+                { name: '香菇炒油菜', pinyin: 'xiangguichaoyoucai', category: '素', recommendedMin: 1, recommendedMax: 4 },
+                { name: '酱爆茄子', pinyin: 'jiangbaoqiezi', category: '素', recommendedMin: 2, recommendedMax: 5 },
+                { name: '西红柿炒西葫芦', pinyin: 'xihongshichaoxihulu', category: '素', recommendedMin: 1, recommendedMax: 4 },
+                { name: '豆芽炒韭菜', pinyin: 'douyachaojiucai', category: '素', recommendedMin: 1, recommendedMax: 4 },
+                { name: '地三鲜', pinyin: 'disanxian', category: '素', recommendedMin: 2, recommendedMax: 5 },
+                { name: '蒜泥空心菜', pinyin: 'suannikongxincai', category: '素', recommendedMin: 1, recommendedMax: 4 },
+                { name: '西红柿鸡蛋汤', pinyin: 'xihongshijidantang', category: '汤', recommendedMin: 1, recommendedMax: 5 },
+                { name: '紫菜虾皮汤', pinyin: 'zicaixiapitang', category: '汤', recommendedMin: 1, recommendedMax: 5 },
+                { name: '冬瓜排骨汤', pinyin: 'dongguapaigutang', category: '汤', recommendedMin: 2, recommendedMax: 6 },
+                { name: '海带豆腐汤', pinyin: 'haidaitoufutang', category: '汤', recommendedMin: 2, recommendedMax: 6 },
+                { name: '鸡茸玉米羹', pinyin: 'jirongyumigeng', category: '汤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '榨菜肉丝汤', pinyin: 'zhacairousitang', category: '汤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '山药枸杞排骨汤', pinyin: 'shanyaogouqipaigutang', category: '汤', recommendedMin: 2, recommendedMax: 6 },
+                { name: '黄花菜鸡蛋汤', pinyin: 'huanghuacaijidantang', category: '汤', recommendedMin: 1, recommendedMax: 5 },
+                { name: '豆腐蘑菇汤', pinyin: 'doufumogutang', category: '汤', recommendedMin: 2, recommendedMax: 6 },
+                { name: '家常炒饭', pinyin: 'jiachangchaofan', category: '主食', recommendedMin: 1, recommendedMax: 3 },
+                { name: '鸡蛋炒面', pinyin: 'jidanchaomian', category: '主食', recommendedMin: 1, recommendedMax: 3 },
+                { name: '葱油拌面', pinyin: 'congyoubanmian', category: '主食', recommendedMin: 1, recommendedMax: 2 },
+                { name: '牛肉拉面', pinyin: 'niuroulamian', category: '主食', recommendedMin: 1, recommendedMax: 2 },
+                { name: '饺子(猪肉白菜馅)', pinyin: 'jiaozi', category: '主食', recommendedMin: 1, recommendedMax: 4 },
+                { name: '包子(韭菜鸡蛋馅)', pinyin: 'baozi', category: '主食', recommendedMin: 1, recommendedMax: 4 },
+                { name: '玉米粥', pinyin: 'yumizhou', category: '主食', recommendedMin: 1, recommendedMax: 5 },
+                { name: '小米粥', pinyin: 'xiaomizhou', category: '主食', recommendedMin: 1, recommendedMax: 5 },
+                { name: '葱花饼', pinyin: 'conghuabing', category: '主食', recommendedMin: 1, recommendedMax: 3 },
+                { name: '锅贴', pinyin: 'guotie', category: '主食', recommendedMin: 1, recommendedMax: 4 },
+                { name: '鱼香肉丝', pinyin: 'yuxiangrousi', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '水煮牛肉', pinyin: 'shuizhuniurou', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '宫保鸡丁', pinyin: 'gongbaojiding', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '酱爆猪肝', pinyin: 'jiangbaozhugan', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '糖醋里脊', pinyin: 'tangculiji', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '回锅肉', pinyin: 'huiguorou', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '香煎带鱼', pinyin: 'xiangjiandaiyu', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '小炒牛肉', pinyin: 'xiaochaoniurou', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '红烧排骨', pinyin: 'hongshaopaigu', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '葱爆羊肉', pinyin: 'congbaoyangrou', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '干锅肥肠', pinyin: 'ganguofeichang', category: '荤', recommendedMin: 3, recommendedMax: 6 },
+                { name: '酱爆鸡块', pinyin: 'jiangbaojikuai', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '清蒸鲈鱼', pinyin: 'qingzhengluyu', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '红烧鸡块', pinyin: 'hongshaojikuai', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '香辣蟹', pinyin: 'xianglaxie', category: '荤', recommendedMin: 3, recommendedMax: 6 },
+                { name: '红烧鲫鱼', pinyin: 'hongshaojiyu', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '孜然羊肉', pinyin: 'ziranyangrou', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '家常炒鸡心', pinyin: 'jiachangchaojixin', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '黄焖鸡块', pinyin: 'huangmenjikuai', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '红烧牛腩', pinyin: 'hongshaoniunan', category: '荤', recommendedMin: 2, recommendedMax: 6 },
+                { name: '香辣小龙虾', pinyin: 'xianglaxiaolongxia', category: '荤', recommendedMin: 3, recommendedMax: 6 },
+                { name: '剁椒鱼头', pinyin: 'duojiaoyutou', category: '荤', recommendedMin: 3, recommendedMax: 6 },
+                { name: '三杯鸡', pinyin: 'sanbeiji', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '梅菜扣肉', pinyin: 'meicaikourou', category: '荤', recommendedMin: 3, recommendedMax: 6 },
+                { name: '啤酒鸭', pinyin: 'pijiuya', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '蒜泥白肉', pinyin: 'suannibairou', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '东坡肉', pinyin: 'dongporou', category: '荤', recommendedMin: 3, recommendedMax: 6 },
+                { name: '铁板牛柳', pinyin: 'tiebanniuliu', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '番茄炒蛋', pinyin: 'fanqiechaodan', category: '半荤', recommendedMin: 1, recommendedMax: 3 },
+                { name: '木须肉', pinyin: 'muxurou', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '苦瓜炒蛋', pinyin: 'kuguachaodan', category: '半荤', recommendedMin: 1, recommendedMax: 3 },
+                { name: '韭菜炒鸡蛋', pinyin: 'jiucaichaojidan', category: '半荤', recommendedMin: 1, recommendedMax: 3 },
+                { name: '黄瓜炒肉片', pinyin: 'huangguachaoroupian', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '冬笋炒腊肉', pinyin: 'dongsunshaolarou', category: '半荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '莴笋炒肉丝', pinyin: 'wosunchaorousi', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '芹菜炒牛肉丝', pinyin: 'qincaichaoniurousi', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '豆腐炒肉末', pinyin: 'doufuchaoroumo', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '蒜苔炒腊肉', pinyin: 'suantaichaolarou', category: '半荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '青椒炒蛋', pinyin: 'qingjiaochaodan', category: '半荤', recommendedMin: 1, recommendedMax: 3 },
+                { name: '豆角炒肉丝', pinyin: 'doujiaochaorousi', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '南瓜炒蛋', pinyin: 'nanguachaodan', category: '半荤', recommendedMin: 1, recommendedMax: 3 },
+                { name: '西葫芦炒鸡蛋', pinyin: 'xihuluchaojidan', category: '半荤', recommendedMin: 1, recommendedMax: 3 },
+                { name: '豆腐皮炒鸡蛋', pinyin: 'doufupichaojidan', category: '半荤', recommendedMin: 1, recommendedMax: 3 },
+                { name: '洋葱炒猪肝', pinyin: 'yangcongchaozhugan', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '平菇炒肉片', pinyin: 'pingguchaoroupian', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '茄子炒肉末', pinyin: 'qiezichaoroumo', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '豆干炒肉丝', pinyin: 'douganchaorousi', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '包菜炒腊肉', pinyin: 'baocaichaolarou', category: '半荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '香菇炒鸡片', pinyin: 'xiangguichaojipian', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '冬瓜炒肉片', pinyin: 'dongguachaoroupian', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '西红柿炒牛腩', pinyin: 'xihongshichaoniunan', category: '半荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '尖椒炒蛋', pinyin: 'jianjiaochaodan', category: '半荤', recommendedMin: 1, recommendedMax: 3 },
+                { name: '土豆片炒腊肉', pinyin: 'tudoupianchaolarou', category: '半荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '蒜薹炒鸡蛋', pinyin: 'suantaichaojidan', category: '半荤', recommendedMin: 1, recommendedMax: 3 },
+                { name: '黄豆芽炒肉丝', pinyin: 'huangdouyachaorousi', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '韭黄炒蛋', pinyin: 'jiuhuangchaodan', category: '半荤', recommendedMin: 1, recommendedMax: 3 },
+                { name: '芦笋炒虾仁', pinyin: 'lusunchaoxiaren', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '豆腐干炒鸡蛋', pinyin: 'doufuchaojidan', category: '半荤', recommendedMin: 1, recommendedMax: 3 }
+            ];
+
+            function loadUserConfig() {
+                const savedConfig = localStorage.getItem('userConfig');
+                if (savedConfig) {
+                    userConfig = JSON.parse(savedConfig);
+                }
+                peopleCountInput.value = userConfig.peopleCount;
+            }
+
+            function getFavorites() {
+                const savedFavorites = localStorage.getItem('favorites');
+                if (savedFavorites) {
+                    favorites = JSON.parse(savedFavorites);
+                }
+            }
+
+            function saveFavorites() {
+                localStorage.setItem('favorites', JSON.stringify(favorites));
+            }
+
+            window.addToDailyMenu = function(dishName) {
+                if (!dailyMenu.includes(dishName)) {
+                    dailyMenu.push(dishName);
+                    displayDailyMenu(); 
+                }
+            }
+
+            window.removeFromDailyMenu = function(dishName) {
+                const index = dailyMenu.indexOf(dishName);
+                if (index > -1) {
+                    dailyMenu.splice(index, 1);
+                    displayDailyMenu();
+                }
+            }
+
+            function clearDailyMenu() {
+                dailyMenu = [];
+                displayDailyMenu();
+            }
+
+            function setActiveView(viewId) {
+                Object.values(views).forEach(view => view.classList.remove('active'));
+                Object.values(navButtons).forEach(btn => btn.classList.remove('active'));
+                views[viewId].classList.add('active');
+                navButtons[viewId].classList.add('active');
+            }
+
+            function getRecommendation(peopleCount) {
+                const meatDishes = recipeDatabase.filter(r => r.category === '荤');
+                const halfMeatDishes = recipeDatabase.filter(r => r.category === '半荤');
+                const vegDishes = recipeDatabase.filter(r => r.category === '素');
+                const soupDishes = recipeDatabase.filter(r => r.category === '汤');
+                let recommendation = [];
+                let meatCount, halfMeatCount, vegCount, soupCount;
+                if (peopleCount <= 2) {
+                    meatCount = 1; halfMeatCount = 0; vegCount = 1; soupCount = 0;
+                } else if (peopleCount <= 4) {
+                    meatCount = 1; halfMeatCount = 1; vegCount = 1; soupCount = 1;
+                } else {
+                    meatCount = 2; halfMeatCount = 1; vegCount = 2; soupCount = 1;
+                }
+                for (let i = 0; i < meatCount; i++) recommendation.push(meatDishes[Math.floor(Math.random() * meatDishes.length)]);
+                for (let i = 0; i < halfMeatCount; i++) recommendation.push(halfMeatDishes[Math.floor(Math.random() * halfMeatDishes.length)]);
+                for (let i = 0; i < vegCount; i++) recommendation.push(vegDishes[Math.floor(Math.random() * vegDishes.length)]);
+                for (let i = 0; i < soupCount; i++) recommendation.push(soupDishes[Math.floor(Math.random() * soupDishes.length)]);
+                return recommendation;
+            }
+
+            function generateRandomMenu() {
+                const recommendation = getRecommendation(userConfig.peopleCount);
+                dailyMenu = recommendation.map(dish => dish.name);
+                displayDailyMenu();
+            }
+
+            function displayDailyMenu() {
+                if (dailyMenu.length === 0) {
+                    recommendationOutput.innerHTML = "<p class='empty-menu-message'>还没有选择菜品，快去自主选择挑选吧！</p>";
+                } else {
+                    recommendationOutput.innerHTML = dailyMenu.map(dishName => {
+                        const dish = recipeDatabase.find(d => d.name === dishName);
+                        return `<div class="dish-item"><span>${dish.name} (${dish.category})</span><button class="remove-btn" onclick="removeFromDailyMenu('${dish.name.replace(/'/g, "\\'")}')">移除</button>${getFavoriteButton(dish.name)}</div>`;
+                    }).join('');
+                }
+            }
+
+            function displaySelection() {
+                const categories = ['荤', '半荤', '素', '汤', '主食'];
+                selectionOutput.innerHTML = categories.map(category => `
+                    <h3 class="category-title">${category}</h3>
+                    <div class="dish-list">
+                        ${recipeDatabase.filter(dish => dish.category === category)
+                            .map(dish => `<div class="dish-item"><span>${dish.name}</span><button class="add-btn" onclick="addToDailyMenu('${dish.name.replace(/'/g, "\\'")}')">添加到菜单</button>${getFavoriteButton(dish.name)}</div>`)
+                            .join('')}
+                    </div>
+                `).join('');
+            }
+
+            function performSearch(query) {
+                const results = recipeDatabase.filter(dish => 
+                    dish.name.toLowerCase().includes(query.toLowerCase()) || 
+                    dish.pinyin.toLowerCase().includes(query.toLowerCase())
+                );
+                searchResults.innerHTML = results.map(dish => `<div class="dish-item"><span>${dish.name} (${dish.category})</span><button class="add-btn" onclick="addToDailyMenu('${dish.name.replace(/'/g, "\\'")}')">添加到菜单</button>${getFavoriteButton(dish.name)}</div>`).join('');
+            }
+
+            function displayFavorites() {
+                if (favorites.length === 0) {
+                    favoritesOutput.innerHTML = `<p style="text-align: center; color: var(--secondary-text-color);">还没有收藏任何菜品哦</p>`;
+                    return;
+                }
+                favoritesOutput.innerHTML = favorites.map(dishName => {
+                    const dish = recipeDatabase.find(d => d.name === dishName);
+                    return `<div class="dish-item"><span>${dish.name} (${dish.category})</span>${getFavoriteButton(dish.name)}</div>`;
+                }).join('');
+            }
+
+            window.toggleFavorite = function(dishName) {
+                const index = favorites.indexOf(dishName);
+                if (index > -1) {
+                    favorites.splice(index, 1);
+                } else {
+                    favorites.push(dishName);
+                }
+                saveFavorites();
+                const activeViewId = document.querySelector('.view.active')?.id;
+                if (activeViewId === 'recommendation-view') displayDailyMenu();
+                else if (activeViewId === 'selection-view') displaySelection();
+                else if (activeViewId === 'search-view') performSearch(searchInput.value);
+                else if (activeViewId === 'favorites-view') displayFavorites();
+            }
+
+            function getFavoriteButton(dishName) {
+                const isFavorited = favorites.includes(dishName);
+                return `<button class="favorite-btn ${isFavorited ? 'favorited' : ''}" onclick="toggleFavorite('${dishName.replace(/'/g, "\\'")}')">★</button>`;
+            }
+
+            // Event Listeners
+            generateRandomBtn.addEventListener('click', generateRandomMenu);
+            clearMenuBtn.addEventListener('click', clearDailyMenu);
+            searchInput.addEventListener('input', (e) => performSearch(e.target.value));
+            saveConfigBtn.addEventListener('click', () => {
+                userConfig.peopleCount = parseInt(peopleCountInput.value, 10);
+                localStorage.setItem('userConfig', JSON.stringify(userConfig));
+                alert('设置已保存！');
+                generateRandomMenu();
+            });
+
+            navRecommendation.addEventListener('click', () => {
+                setActiveView('recommendation');
+                displayDailyMenu();
+            });
+
+            navSelection.addEventListener('click', () => {
+                setActiveView('selection');
+                displaySelection();
+            });
+            navSearch.addEventListener('click', () => setActiveView('search'));
+            navFavorites.addEventListener('click', () => { setActiveView('favorites'); displayFavorites(); });
+            navConfig.addEventListener('click', () => setActiveView('config'));
+
+            // Initial Load
+            loadUserConfig();
+            getFavorites();
+            displayDailyMenu();
+            displaySelection();
+            setActiveView('recommendation');
+        });
+    </script>
+</body>
+</html>
