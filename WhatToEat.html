@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>今天吃什么</title>
+    <style>
+        :root {
+            /* 现代化配色方案 */
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --success-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            
+            --background-color: #f8fafc;
+            --card-background: #ffffff;
+            --glass-background: rgba(255, 255, 255, 0.25);
+            --primary-text-color: #1a202c;
+            --secondary-text-color: #718096;
+            --accent-color: #667eea;
+            --accent-color-hover: #5a67d8;
+            --border-color: #e2e8f0;
+            --shadow-light: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-medium: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-large: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --border-radius-sm: 8px;
+            --border-radius-md: 12px;
+            --border-radius-lg: 16px;
+            --border-radius-xl: 20px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--background-color);
+            background-image: 
+                radial-gradient(circle at 25% 25%, rgba(102, 126, 234, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 75% 75%, rgba(118, 75, 162, 0.1) 0%, transparent 50%);
+            color: var(--primary-text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding-bottom: 100px;
+            line-height: 1.6;
+            font-weight: 400;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 640px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .card {
+            background: var(--card-background);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: var(--border-radius-xl);
+            box-shadow: var(--shadow-large);
+            margin-bottom: 24px;
+            padding: 28px;
+            overflow: hidden;
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--primary-gradient);
+            border-radius: var(--border-radius-xl) var(--border-radius-xl) 0 0;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-large), 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        h1, h2 {
+            color: var(--primary-text-color);
+            text-align: center;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 32px;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: none;
+        }
+
+        h2 {
+            font-size: 24px;
+            margin-top: 0;
+            margin-bottom: 20px;
+            position: relative;
+            padding-bottom: 12px;
+        }
+
+        h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .view {
+            display: none;
+            animation: slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        @keyframes slideInUp {
+            from { 
+                opacity: 0; 
+                transform: translateY(30px) scale(0.95); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0) scale(1); 
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .config-section, .recommendation-section, .selection-section, .search-section, .favorites-section {
+            margin-bottom: 24px;
+        }
+
+        label {
+            font-weight: 600;
+            color: var(--primary-text-color);
+            margin-bottom: 12px;
+            display: block;
+            font-size: 15px;
+            letter-spacing: -0.01em;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        input[type="number"], input[type="text"] {
+            flex-grow: 1;
+            padding: 16px 20px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius-md);
+            font-size: 16px;
+            font-weight: 500;
+            background: var(--card-background);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            outline: none;
+        }
+
+        input[type="number"]:focus, input[type="text"]:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .btn {
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius-md);
+            padding: 16px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-block;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            letter-spacing: -0.01em;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: var(--glass-background);
+            color: var(--primary-text-color);
+            border: 2px solid var(--border-color);
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.4);
+            border-color: var(--accent-color);
+        }
+
+        .add-btn, .remove-btn {
+            background: var(--success-gradient);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius-sm);
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .remove-btn {
+            background: var(--secondary-gradient);
+        }
+
+        .add-btn:hover, .remove-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-light);
+        }
+
+        .add-btn::before, .remove-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .add-btn:hover::before, .remove-btn:hover::before {
+            left: 100%;
+        }
+
+        .dish-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .dish-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            margin-bottom: 8px;
+            background: var(--glass-background);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: var(--border-radius-md);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dish-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%;
+            background: var(--accent-gradient);
+            transform: scaleY(0);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .dish-item:hover::before {
+            transform: scaleY(1);
+        }
+
+        .dish-item:hover {
+            transform: translateX(4px);
+            background: rgba(255, 255, 255, 0.4);
+            box-shadow: var(--shadow-light);
+            border-color: rgba(102, 126, 234, 0.2);
+        }
+
+        .dish-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .dish-item span {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .dish-item .button-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .empty-menu-message {
+            text-align: center;
+            color: var(--secondary-text-color);
+            font-style: italic;
+            padding: 40px 20px;
+            background: var(--glass-background);
+            border-radius: var(--border-radius-md);
+            border: 2px dashed var(--border-color);
+            margin: 20px 0;
+        }
+
+        .category-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-top: 28px;
+            margin-bottom: 16px;
+            color: var(--primary-text-color);
+            position: relative;
+            padding-left: 16px;
+        }
+
+        .category-title::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 24px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            display: flex;
+            justify-content: space-around;
+            box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 16px 0 20px 0;
+        }
+
+        .nav-btn {
+            background: none;
+            border: none;
+            color: var(--secondary-text-color);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: var(--border-radius-md);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .nav-btn .icon {
+            font-size: 24px;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-btn:hover .icon {
+            transform: scale(1.1);
+        }
+
+        .nav-btn.active {
+            color: var(--accent-color);
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .nav-btn.active::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 32px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 0 0 2px 2px;
+        }
+        
+        .favorite-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 24px;
+            color: var(--secondary-text-color);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 8px;
+            border-radius: 50%;
+        }
+
+        .favorite-btn:hover {
+            background: rgba(255, 69, 58, 0.1);
+            transform: scale(1.1);
+        }
+
+        .favorite-btn.favorited {
+            color: #ff453a;
+            transform: scale(1.2);
+            animation: heartBeat 0.6s ease-in-out;
+        }
+
+        @keyframes heartBeat {
+            0% { transform: scale(1); }
+            14% { transform: scale(1.3); }
+            28% { transform: scale(1); }
+            42% { transform: scale(1.3); }
+            70% { transform: scale(1); }
+        }
+
+        @keyframes slideInLeft {
+            from { 
+                opacity: 0; 
+                transform: translateX(-30px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateX(0); 
+            }
+        }
+
+        @keyframes slideInRight {
+            from { 
+                opacity: 0; 
+                transform: translateX(30px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateX(0); 
+            }
+        }
+
+        @keyframes bounceIn {
+            0% { 
+                opacity: 0; 
+                transform: scale(0.3); 
+            }
+            50% { 
+                opacity: 1; 
+                transform: scale(1.05); 
+            }
+            70% { 
+                transform: scale(0.9); 
+            }
+            100% { 
+                opacity: 1; 
+                transform: scale(1); 
+            }
+        }
+
+        @keyframes pulse {
+            0% { 
+                box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7); 
+            }
+            70% { 
+                box-shadow: 0 0 0 10px rgba(102, 126, 234, 0); 
+            }
+            100% { 
+                box-shadow: 0 0 0 0 rgba(102, 126, 234, 0); 
+            }
+        }
+
+        @keyframes shimmer {
+            0% { 
+                background-position: -200px 0; 
+            }
+            100% { 
+                background-position: calc(200px + 100%) 0; 
+            }
+        }
+
+        .dish-item {
+            animation: slideInLeft 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .dish-item:nth-child(even) {
+            animation: slideInRight 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .category-title {
+            animation: bounceIn 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn:focus {
+            animation: pulse 2s infinite;
+        }
+
+        .loading {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200px 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        .nav-btn:hover {
+            animation: bounceIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card {
+            animation: slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card:nth-child(even) {
+            animation-delay: 0.1s;
+        }
+
+        .card:nth-child(odd) {
+            animation-delay: 0.2s;
+        }
+
+        .btn, .add-btn, .remove-btn {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:active, .add-btn:active, .remove-btn:active {
+            transform: scale(0.95);
+        }
+
+        .favorite-btn:hover {
+            animation: heartBeat 0.6s ease-in-out;
+        }
+
+        .view {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .view.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .dish-item:hover .favorite-btn {
+            transform: scale(1.2) rotate(10deg);
+        }
+
+        .dish-item:hover .add-btn,
+        .dish-item:hover .remove-btn {
+            transform: translateY(-2px) scale(1.05);
+        }
+
+        .empty-menu-message {
+            animation: bounceIn 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        input[type="number"]:focus, input[type="text"]:focus {
+            animation: pulse 2s infinite;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 12px;
+            }
+            
+            .card {
+                padding: 20px;
+                margin-bottom: 16px;
+                border-radius: var(--border-radius-lg);
+            }
+            
+            h1 {
+                font-size: 28px;
+                margin-bottom: 24px;
+            }
+            
+            h2 {
+                font-size: 20px;
+                margin-bottom: 16px;
+            }
+            
+            .input-group {
+                flex-direction: column;
+                gap: 12px;
+            }
+            
+            input[type="number"], input[type="text"] {
+                padding: 14px 16px;
+                font-size: 16px;
+            }
+            
+            .btn {
+                padding: 14px 20px;
+                font-size: 15px;
+                width: 100%;
+            }
+            
+            .dish-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+                padding: 16px;
+            }
+            
+            .dish-item .button-group {
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            .category-title {
+                font-size: 18px;
+                margin-top: 20px;
+                margin-bottom: 12px;
+            }
+            
+            .nav {
+                padding: 12px 0 16px 0;
+            }
+            
+            .nav-btn {
+                padding: 6px 8px;
+                font-size: 11px;
+                gap: 4px;
+            }
+            
+            .nav-btn .icon {
+                font-size: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding-bottom: 90px;
+            }
+            
+            .container {
+                padding: 8px;
+            }
+            
+            .card {
+                padding: 16px;
+                margin-bottom: 12px;
+                border-radius: var(--border-radius-md);
+            }
+            
+            h1 {
+                font-size: 24px;
+                margin-bottom: 20px;
+            }
+            
+            h2 {
+                font-size: 18px;
+                margin-bottom: 12px;
+            }
+            
+            .category-title {
+                font-size: 16px;
+                margin-top: 16px;
+                margin-bottom: 10px;
+            }
+            
+            .dish-item {
+                padding: 12px;
+                margin-bottom: 6px;
+            }
+            
+            .dish-item span {
+                font-size: 14px;
+            }
+            
+            .add-btn, .remove-btn {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+            
+            .favorite-btn {
+                font-size: 20px;
+                padding: 6px;
+            }
+            
+            .nav {
+                padding: 8px 0 12px 0;
+            }
+            
+            .nav-btn {
+                padding: 4px 6px;
+                font-size: 10px;
+                gap: 2px;
+            }
+            
+            .nav-btn .icon {
+                font-size: 18px;
+            }
+            
+            .empty-menu-message {
+                padding: 30px 15px;
+                font-size: 14px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .container {
+                padding: 6px;
+            }
+            
+            .card {
+                padding: 12px;
+                margin-bottom: 10px;
+            }
+            
+            h1 {
+                font-size: 22px;
+                margin-bottom: 16px;
+            }
+            
+            h2 {
+                font-size: 16px;
+                margin-bottom: 10px;
+            }
+            
+            .dish-item {
+                padding: 10px;
+                margin-bottom: 4px;
+            }
+            
+            .nav-btn {
+                padding: 3px 4px;
+                font-size: 9px;
+            }
+            
+            .nav-btn .icon {
+                font-size: 16px;
+            }
+        }
+
+        /* 横屏模式优化 */
+        @media (orientation: landscape) and (max-height: 600px) {
+            body {
+                padding-bottom: 80px;
+            }
+            
+            .nav {
+                padding: 8px 0 12px 0;
+            }
+            
+            .nav-btn {
+                padding: 4px 8px;
+                font-size: 10px;
+            }
+            
+            .nav-btn .icon {
+                font-size: 18px;
+            }
+        }
+
+        /* 触摸设备优化 */
+        @media (hover: none) and (pointer: coarse) {
+            .btn, .add-btn, .remove-btn, .favorite-btn, .nav-btn {
+                min-height: 44px;
+                min-width: 44px;
+            }
+            
+            .dish-item:hover {
+                transform: none;
+            }
+            
+            .dish-item:active {
+                transform: scale(0.98);
+                background: rgba(255, 255, 255, 0.5);
+            }
+            
+            .btn:hover, .add-btn:hover, .remove-btn:hover {
+                transform: none;
+            }
+            
+            .btn:active, .add-btn:active, .remove-btn:active {
+                transform: scale(0.95);
+            }
+        }
+
+        /* 高分辨率屏幕优化 */
+        @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+            .card::before {
+                height: 3px;
+            }
+            
+            .category-title::before {
+                width: 3px;
+            }
+        }
+
+        /* 暗色模式支持 */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --background-color: #1a202c;
+                --card-background: #2d3748;
+                --glass-background: rgba(45, 55, 72, 0.8);
+                --primary-text-color: #f7fafc;
+                --secondary-text-color: #a0aec0;
+                --border-color: #4a5568;
+            }
+            
+            body {
+                background-image: 
+                    radial-gradient(circle at 25% 25%, rgba(102, 126, 234, 0.2) 0%, transparent 50%),
+                    radial-gradient(circle at 75% 75%, rgba(118, 75, 162, 0.2) 0%, transparent 50%);
+            }
+            
+            .nav {
+                background: rgba(45, 55, 72, 0.95);
+            }
+        }
+
+        /* 减少动画偏好 */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="app-title">今天吃什么？</h1>
+
+        <div id="config-view" class="view">
+            <div class="card">
+                <h2>用户配置</h2>
+                <div class="config-section">
+                    <label for="people-count">家庭用餐人数：</label>
+                    <div class="input-group">
+                        <input type="number" id="people-count" min="1" value="3">
+                        <button id="save-config-btn" class="btn">保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="recommendation-view" class="view active">
+            <div class="card">
+                <h2>今日菜单</h2>
+                <div id="recommendation-output" class="recommendation-section"></div>
+                <button id="generate-random-btn" class="btn" style="width: 100%; margin-bottom: 10px;">随机生成</button>
+                <button id="clear-menu-btn" class="btn btn-secondary" style="width: 100%;">清空菜单</button>
+            </div>
+        </div>
+
+        <div id="selection-view" class="view">
+            <div class="card">
+                <h2>自主选择</h2>
+                <div id="selection-output" class="selection-section"></div>
+            </div>
+        </div>
+
+        <div id="search-view" class="view">
+            <div class="card">
+                <h2>搜索菜品</h2>
+                <div class="search-section">
+                    <input type="text" id="search-input" placeholder="输入菜名或拼音搜索...">
+                    <div id="search-results" class="dish-list" style="margin-top: 15px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="favorites-view" class="view">
+            <div class="card">
+                <h2>我的收藏</h2>
+                <div id="favorites-output" class="favorites-section"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="nav">
+        <button id="nav-recommendation" class="nav-btn active"><span class="icon">🌟</span>今日菜单</button>
+        <button id="nav-selection" class="nav-btn"><span class="icon">📖</span>自主选择</button>
+        <button id="nav-search" class="nav-btn"><span class="icon">🔍</span>搜索</button>
+        <button id="nav-favorites" class="nav-btn"><span class="icon">❤️</span>我的收藏</button>
+        <button id="nav-config" class="nav-btn"><span class="icon">⚙️</span>设置</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Element Declarations
+            const peopleCountInput = document.getElementById('people-count');
+            const recommendationOutput = document.getElementById('recommendation-output');
+            const selectionOutput = document.getElementById('selection-output');
+            const searchInput = document.getElementById('search-input');
+            const searchResults = document.getElementById('search-results');
+            const favoritesOutput = document.getElementById('favorites-output');
+            const saveConfigBtn = document.getElementById('save-config-btn');
+            const clearMenuBtn = document.getElementById('clear-menu-btn');
+            const generateRandomBtn = document.getElementById('generate-random-btn');
+            const navRecommendation = document.getElementById('nav-recommendation');
+            const navSelection = document.getElementById('nav-selection');
+            const navSearch = document.getElementById('nav-search');
+            const navFavorites = document.getElementById('nav-favorites');
+            const navConfig = document.getElementById('nav-config');
+
+            const views = {
+                'recommendation': document.getElementById('recommendation-view'),
+                'selection': document.getElementById('selection-view'),
+                'search': document.getElementById('search-view'),
+                'favorites': document.getElementById('favorites-view'),
+                'config': document.getElementById('config-view')
+            };
+
+            const navButtons = {
+                'recommendation': navRecommendation,
+                'selection': navSelection,
+                'search': navSearch,
+                'favorites': navFavorites,
+                'config': navConfig
+            };
+
+            let userConfig = { peopleCount: 3 };
+            let favorites = [];
+            let dailyMenu = [];
+
+            const recipeDatabase = [
+                { name: '红烧肉', pinyin: 'hongshaorou', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '可乐鸡翅', pinyin: 'kelejichi', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '酸辣汤', pinyin: 'suanlatang', category: '汤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '米饭', pinyin: 'mifan', category: '主食', recommendedMin: 1, recommendedMax: 10 },
+                { name: '清炒时蔬', pinyin: 'qingchaoshishu', category: '素', recommendedMin: 1, recommendedMax: 3 },
+                { name: '紫菜蛋花汤', pinyin: 'zicaidanhuatang', category: '汤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '扬州炒饭', pinyin: 'yangzhouchaofan', category: '主食', recommendedMin: 1, recommendedMax: 2 },
+                { name: '青椒土豆丝', pinyin: 'qingjiaotudousi', category: '素', recommendedMin: 1, recommendedMax: 4 },
+                { name: '醋溜白菜', pinyin: 'culiubaicai', category: '素', recommendedMin: 1, recommendedMax: 4 },
+                { name: '干煸四季豆', pinyin: 'ganbiansijidou', category: '素', recommendedMin: 2, recommendedMax: 5 },
+                { name: '蒜蓉西兰花', pinyin: 'suanrongxilanhua', category: '素', recommendedMin: 1, recommendedMax: 4 },
+                { name: '香菇炒油菜', pinyin: 'xiangguichaoyoucai', category: '素', recommendedMin: 1, recommendedMax: 4 },
+                { name: '酱爆茄子', pinyin: 'jiangbaoqiezi', category: '素', recommendedMin: 2, recommendedMax: 5 },
+                { name: '西红柿炒西葫芦', pinyin: 'xihongshichaoxihulu', category: '素', recommendedMin: 1, recommendedMax: 4 },
+                { name: '豆芽炒鸡蛋', pinyin: 'douyachaojiucai', category: '素', recommendedMin: 1, recommendedMax: 4 },
+                { name: '地三鲜', pinyin: 'disanxian', category: '素', recommendedMin: 2, recommendedMax: 5 },
+                { name: '蒜泥空心菜', pinyin: 'suannikongxincai', category: '素', recommendedMin: 1, recommendedMax: 4 },
+                { name: '西红柿鸡蛋汤', pinyin: 'xihongshijidantang', category: '汤', recommendedMin: 1, recommendedMax: 5 },
+                { name: '紫菜虾皮汤', pinyin: 'zicaixiapitang', category: '汤', recommendedMin: 1, recommendedMax: 5 },
+                { name: '冬瓜排骨汤', pinyin: 'dongguapaigutang', category: '汤', recommendedMin: 2, recommendedMax: 6 },
+                { name: '海带豆腐汤', pinyin: 'haidaitoufutang', category: '汤', recommendedMin: 2, recommendedMax: 6 },
+                { name: '鸡茸玉米羹', pinyin: 'jirongyumigeng', category: '汤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '榨菜肉丝汤', pinyin: 'zhacairousitang', category: '汤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '山药枸杞排骨汤', pinyin: 'shanyaogouqipaigutang', category: '汤', recommendedMin: 2, recommendedMax: 6 },
+                { name: '黄花菜鸡蛋汤', pinyin: 'huanghuacaijidantang', category: '汤', recommendedMin: 1, recommendedMax: 5 },
+                { name: '豆腐蘑菇汤', pinyin: 'doufumogutang', category: '汤', recommendedMin: 2, recommendedMax: 6 },
+                { name: '家常炒饭', pinyin: 'jiachangchaofan', category: '主食', recommendedMin: 1, recommendedMax: 3 },
+                { name: '鸡蛋炒面', pinyin: 'jidanchaomian', category: '主食', recommendedMin: 1, recommendedMax: 3 },
+                { name: '葱油拌面', pinyin: 'congyoubanmian', category: '主食', recommendedMin: 1, recommendedMax: 2 },
+                { name: '牛肉拉面', pinyin: 'niuroulamian', category: '主食', recommendedMin: 1, recommendedMax: 2 },
+                { name: '饺子(猪肉白菜馅)', pinyin: 'jiaozi', category: '主食', recommendedMin: 1, recommendedMax: 4 },
+                { name: '包子(韭菜鸡蛋馅)', pinyin: 'baozi', category: '主食', recommendedMin: 1, recommendedMax: 4 },
+                { name: '玉米粥', pinyin: 'yumizhou', category: '主食', recommendedMin: 1, recommendedMax: 5 },
+                { name: '小米粥', pinyin: 'xiaomizhou', category: '主食', recommendedMin: 1, recommendedMax: 5 },
+                { name: '葱花饼', pinyin: 'conghuabing', category: '主食', recommendedMin: 1, recommendedMax: 3 },
+                { name: '锅贴', pinyin: 'guotie', category: '主食', recommendedMin: 1, recommendedMax: 4 },
+                { name: '鱼香肉丝', pinyin: 'yuxiangrousi', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '水煮牛肉', pinyin: 'shuizhuniurou', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '宫保鸡丁', pinyin: 'gongbaojiding', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '酱爆猪肝', pinyin: 'jiangbaozhugan', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '糖醋里脊', pinyin: 'tangculiji', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '回锅肉', pinyin: 'huiguorou', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '香煎带鱼', pinyin: 'xiangjiandaiyu', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '小炒牛肉', pinyin: 'xiaochaoniurou', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '红烧排骨', pinyin: 'hongshaopaigu', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '葱爆羊肉', pinyin: 'congbaoyangrou', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '干锅肥肠', pinyin: 'ganguofeichang', category: '荤', recommendedMin: 3, recommendedMax: 6 },
+                { name: '酱爆鸡块', pinyin: 'jiangbaojikuai', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '清蒸鲈鱼', pinyin: 'qingzhengluyu', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '红烧鸡块', pinyin: 'hongshaojikuai', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '香辣蟹', pinyin: 'xianglaxie', category: '荤', recommendedMin: 3, recommendedMax: 6 },
+                { name: '红烧鲫鱼', pinyin: 'hongshaojiyu', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '孜然羊肉', pinyin: 'ziranyangrou', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '家常炒鸡心', pinyin: 'jiachangchaojixin', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '黄焖鸡块', pinyin: 'huangmenjikuai', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '红烧牛腩', pinyin: 'hongshaoniunan', category: '荤', recommendedMin: 2, recommendedMax: 6 },
+                { name: '香辣小龙虾', pinyin: 'xianglaxiaolongxia', category: '荤', recommendedMin: 3, recommendedMax: 6 },
+                { name: '剁椒鱼头', pinyin: 'duojiaoyutou', category: '荤', recommendedMin: 3, recommendedMax: 6 },
+                { name: '三杯鸡', pinyin: 'sanbeiji', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '梅菜扣肉', pinyin: 'meicaikourou', category: '荤', recommendedMin: 3, recommendedMax: 6 },
+                { name: '啤酒鸭', pinyin: 'pijiuya', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '蒜泥白肉', pinyin: 'suannibairou', category: '荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '东坡肉', pinyin: 'dongporou', category: '荤', recommendedMin: 3, recommendedMax: 6 },
+                { name: '铁板牛柳', pinyin: 'tiebanniuliu', category: '荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '番茄炒蛋', pinyin: 'fanqiechaodan', category: '半荤', recommendedMin: 1, recommendedMax: 3 },
+                { name: '木须肉', pinyin: 'muxurou', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '苦瓜炒蛋', pinyin: 'kuguachaodan', category: '半荤', recommendedMin: 1, recommendedMax: 3 },
+                { name: '韭菜炒鸡蛋', pinyin: 'jiucaichaojidan', category: '半荤', recommendedMin: 1, recommendedMax: 3 },
+                { name: '黄瓜炒肉片', pinyin: 'huangguachaoroupian', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '冬笋炒腊肉', pinyin: 'dongsunshaolarou', category: '半荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '莴笋炒肉丝', pinyin: 'wosunchaorousi', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '芹菜炒牛肉丝', pinyin: 'qincaichaoniurousi', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '豆腐炒肉末', pinyin: 'doufuchaoroumo', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '蒜苔炒腊肉', pinyin: 'suantaichaolarou', category: '半荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '青椒炒蛋', pinyin: 'qingjiaochaodan', category: '半荤', recommendedMin: 1, recommendedMax: 3 },
+                { name: '豆角炒肉丝', pinyin: 'doujiaochaorousi', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '南瓜炒蛋', pinyin: 'nanguachaodan', category: '半荤', recommendedMin: 1, recommendedMax: 3 },
+                { name: '西葫芦炒鸡蛋', pinyin: 'xihuluchaojidan', category: '半荤', recommendedMin: 1, recommendedMax: 3 },
+                { name: '豆腐皮炒鸡蛋', pinyin: 'doufupichaojidan', category: '半荤', recommendedMin: 1, recommendedMax: 3 },
+                { name: '洋葱炒猪肝', pinyin: 'yangcongchaozhugan', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '平菇炒肉片', pinyin: 'pingguchaoroupian', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '茄子炒肉末', pinyin: 'qiezichaoroumo', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '豆干炒肉丝', pinyin: 'douganchaorousi', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '包菜炒腊肉', pinyin: 'baocaichaolarou', category: '半荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '香菇炒鸡片', pinyin: 'xiangguichaojipian', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '冬瓜炒肉片', pinyin: 'dongguachaoroupian', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '西红柿炒牛腩', pinyin: 'xihongshichaoniunan', category: '半荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '尖椒炒蛋', pinyin: 'jianjiaochaodan', category: '半荤', recommendedMin: 1, recommendedMax: 3 },
+                { name: '土豆片炒腊肉', pinyin: 'tudoupianchaolarou', category: '半荤', recommendedMin: 2, recommendedMax: 5 },
+                { name: '蒜薹炒鸡蛋', pinyin: 'suantaichaojidan', category: '半荤', recommendedMin: 1, recommendedMax: 3 },
+                { name: '黄豆芽炒肉丝', pinyin: 'huangdouyachaorousi', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '韭黄炒蛋', pinyin: 'jiuhuangchaodan', category: '半荤', recommendedMin: 1, recommendedMax: 3 },
+                { name: '芦笋炒虾仁', pinyin: 'lusunchaoxiaren', category: '半荤', recommendedMin: 2, recommendedMax: 4 },
+                { name: '豆腐干炒鸡蛋', pinyin: 'doufuchaojidan', category: '半荤', recommendedMin: 1, recommendedMax: 3 }
+            ];
+
+            function loadUserConfig() {
+                const savedConfig = localStorage.getItem('userConfig');
+                if (savedConfig) {
+                    userConfig = JSON.parse(savedConfig);
+                }
+                peopleCountInput.value = userConfig.peopleCount;
+            }
+
+            function getFavorites() {
+                const savedFavorites = localStorage.getItem('favorites');
+                if (savedFavorites) {
+                    favorites = JSON.parse(savedFavorites);
+                }
+            }
+
+            function saveFavorites() {
+                localStorage.setItem('favorites', JSON.stringify(favorites));
+            }
+
+            window.addToDailyMenu = function(dishName) {
+                if (!dailyMenu.includes(dishName)) {
+                    dailyMenu.push(dishName);
+                    displayDailyMenu(); 
+                }
+            }
+
+            window.removeFromDailyMenu = function(dishName) {
+                const index = dailyMenu.indexOf(dishName);
+                if (index > -1) {
+                    dailyMenu.splice(index, 1);
+                    displayDailyMenu();
+                }
+            }
+
+            function clearDailyMenu() {
+                dailyMenu = [];
+                displayDailyMenu();
+            }
+
+            function setActiveView(viewId) {
+                Object.values(views).forEach(view => view.classList.remove('active'));
+                Object.values(navButtons).forEach(btn => btn.classList.remove('active'));
+                views[viewId].classList.add('active');
+                navButtons[viewId].classList.add('active');
+            }
+
+            function getRecommendation(peopleCount) {
+                const meatDishes = recipeDatabase.filter(r => r.category === '荤');
+                const halfMeatDishes = recipeDatabase.filter(r => r.category === '半荤');
+                const vegDishes = recipeDatabase.filter(r => r.category === '素');
+                const soupDishes = recipeDatabase.filter(r => r.category === '汤');
+                let recommendation = [];
+                let meatCount, halfMeatCount, vegCount, soupCount;
+                if (peopleCount <= 2) {
+                    meatCount = 1; halfMeatCount = 0; vegCount = 1; soupCount = 0;
+                } else if (peopleCount <= 4) {
+                    meatCount = 1; halfMeatCount = 1; vegCount = 1; soupCount = 1;
+                } else {
+                    meatCount = 2; halfMeatCount = 1; vegCount = 2; soupCount = 1;
+                }
+                for (let i = 0; i < meatCount; i++) recommendation.push(meatDishes[Math.floor(Math.random() * meatDishes.length)]);
+                for (let i = 0; i < halfMeatCount; i++) recommendation.push(halfMeatDishes[Math.floor(Math.random() * halfMeatDishes.length)]);
+                for (let i = 0; i < vegCount; i++) recommendation.push(vegDishes[Math.floor(Math.random() * vegDishes.length)]);
+                for (let i = 0; i < soupCount; i++) recommendation.push(soupDishes[Math.floor(Math.random() * soupDishes.length)]);
+                return recommendation;
+            }
+
+            function generateRandomMenu() {
+                const recommendation = getRecommendation(userConfig.peopleCount);
+                dailyMenu = recommendation.map(dish => dish.name);
+                displayDailyMenu();
+            }
+
+            function displayDailyMenu() {
+                if (dailyMenu.length === 0) {
+                    recommendationOutput.innerHTML = "<p class='empty-menu-message'>还没有选择菜品，快去自主选择挑选吧！</p>";
+                } else {
+                    recommendationOutput.innerHTML = dailyMenu.map(dishName => {
+                        const dish = recipeDatabase.find(d => d.name === dishName);
+                        return `<div class="dish-item"><span>${dish.name} (${dish.category})</span><button class="remove-btn" onclick="removeFromDailyMenu('${dish.name.replace(/'/g, "\\'")}')">移除</button>${getFavoriteButton(dish.name)}</div>`;
+                    }).join('');
+                }
+            }
+
+            function displaySelection() {
+                const categories = ['荤', '半荤', '素', '汤', '主食'];
+                selectionOutput.innerHTML = categories.map(category => `
+                    <h3 class="category-title">${category}</h3>
+                    <div class="dish-list">
+                        ${recipeDatabase.filter(dish => dish.category === category)
+                            .map(dish => `<div class="dish-item"><span>${dish.name}</span><button class="add-btn" onclick="addToDailyMenu('${dish.name.replace(/'/g, "\\'")}')">添加到菜单</button>${getFavoriteButton(dish.name)}</div>`)
+                            .join('')}
+                    </div>
+                `).join('');
+            }
+
+            function performSearch(query) {
+                const results = recipeDatabase.filter(dish => 
+                    dish.name.toLowerCase().includes(query.toLowerCase()) || 
+                    dish.pinyin.toLowerCase().includes(query.toLowerCase())
+                );
+                searchResults.innerHTML = results.map(dish => `<div class="dish-item"><span>${dish.name} (${dish.category})</span><button class="add-btn" onclick="addToDailyMenu('${dish.name.replace(/'/g, "\\'")}')">添加到菜单</button>${getFavoriteButton(dish.name)}</div>`).join('');
+            }
+
+            function displayFavorites() {
+                if (favorites.length === 0) {
+                    favoritesOutput.innerHTML = `<p style="text-align: center; color: var(--secondary-text-color);">还没有收藏任何菜品哦</p>`;
+                    return;
+                }
+                favoritesOutput.innerHTML = favorites.map(dishName => {
+                    const dish = recipeDatabase.find(d => d.name === dishName);
+                    return `<div class="dish-item"><span>${dish.name} (${dish.category})</span>${getFavoriteButton(dish.name)}</div>`;
+                }).join('');
+            }
+
+            window.toggleFavorite = function(dishName) {
+                const index = favorites.indexOf(dishName);
+                if (index > -1) {
+                    favorites.splice(index, 1);
+                } else {
+                    favorites.push(dishName);
+                }
+                saveFavorites();
+                const activeViewId = document.querySelector('.view.active')?.id;
+                if (activeViewId === 'recommendation-view') displayDailyMenu();
+                else if (activeViewId === 'selection-view') displaySelection();
+                else if (activeViewId === 'search-view') performSearch(searchInput.value);
+                else if (activeViewId === 'favorites-view') displayFavorites();
+            }
+
+            function getFavoriteButton(dishName) {
+                const isFavorited = favorites.includes(dishName);
+                return `<button class="favorite-btn ${isFavorited ? 'favorited' : ''}" onclick="toggleFavorite('${dishName.replace(/'/g, "\\'")}')">★</button>`;
+            }
+
+            // Event Listeners
+            generateRandomBtn.addEventListener('click', generateRandomMenu);
+            clearMenuBtn.addEventListener('click', clearDailyMenu);
+            searchInput.addEventListener('input', (e) => performSearch(e.target.value));
+            saveConfigBtn.addEventListener('click', () => {
+                userConfig.peopleCount = parseInt(peopleCountInput.value, 10);
+                localStorage.setItem('userConfig', JSON.stringify(userConfig));
+                alert('设置已保存！');
+                generateRandomMenu();
+            });
+
+            navRecommendation.addEventListener('click', () => {
+                setActiveView('recommendation');
+                displayDailyMenu();
+            });
+
+            navSelection.addEventListener('click', () => {
+                setActiveView('selection');
+                displaySelection();
+            });
+            navSearch.addEventListener('click', () => setActiveView('search'));
+            navFavorites.addEventListener('click', () => { setActiveView('favorites'); displayFavorites(); });
+            navConfig.addEventListener('click', () => setActiveView('config'));
+
+            // Initial Load
+            loadUserConfig();
+            getFavorites();
+            displayDailyMenu();
+            displaySelection();
+            setActiveView('recommendation');
+        });
+    </script>
+</body>
+</html>
