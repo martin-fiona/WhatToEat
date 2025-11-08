@@ -316,7 +316,7 @@ function SelectedDishesBar({ dishes, selectedIds, onRemove }: { dishes: any[]; s
             onClick={() => openModal(dish)}
           >
             <div className="flex gap-3">
-              <img src={dish.image_url || '/favicon.svg'} alt={dish.name} className="w-16 h-16 rounded object-cover" />
+            <img src={(import.meta as any).env.BASE_URL + (dish.image_url?.startsWith('/') ? dish.image_url.slice(1) : (dish.image_url || 'favicon.svg'))} alt={dish.name} className="w-16 h-16 rounded object-cover" />
               <div className="flex-1">
                 <div className="text-sm font-medium text-gray-800">
                   {dish.name}
@@ -347,7 +347,7 @@ function SelectedDishesBar({ dishes, selectedIds, onRemove }: { dishes: any[]; s
                 </button>
               </div>
               <div className="p-4 max-h-[70vh] overflow-y-auto">
-                <img src={activeDish.image_url || '/favicon.svg'} alt={activeDish.name} className="w-full h-56 object-cover rounded" />
+            <img src={(import.meta as any).env.BASE_URL + (activeDish.image_url?.startsWith('/') ? activeDish.image_url.slice(1) : (activeDish.image_url || 'favicon.svg'))} alt={activeDish.name} className="w-full h-56 object-cover rounded" />
                 <div className="mt-4 flex items-center gap-2">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(activeDish.category)}`}>{activeDish.category}</span>
                   <span className="text-xs text-gray-500">热量：{activeDish.calories || 0} 卡</span>

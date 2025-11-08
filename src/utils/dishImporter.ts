@@ -57,7 +57,7 @@ export const importDishesToSupabase = async (dishes: Dish[]) => {
 
 export const loadDishesFromCSV = async () => {
   try {
-    const response = await fetch('/recipes.csv')
+    const response = await fetch(`${import.meta.env.BASE_URL}recipes.csv`)
     const csvContent = await response.text()
     const dishes = await parseDishesFromCSV(csvContent)
     

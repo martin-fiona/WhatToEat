@@ -10,7 +10,12 @@ interface DishCardProps {
 
 export function DishCard({ dish, isSelected, onToggle }: DishCardProps) {
   const [open, setOpen] = useState(false)
-  const [imgSrc, setImgSrc] = useState<string>(dish.image_url || '/favicon.svg')
+  const withBase = (path: string) => {
+    if (!path) return ''
+    const base = import.meta.env.BASE_URL || '/'
+    return path.startsWith('/') ? `${base}${path.slice(1)}` : path
+  }
+  const [imgSrc, setImgSrc] = useState<string>(withBase(dish.image_url || '/favicon.svg'))
   const [attempt, setAttempt] = useState<number>(0)
   const extOrder = ['jpeg', 'png', 'webp', 'jpg']
 
@@ -30,7 +35,7 @@ export function DishCard({ dish, isSelected, onToggle }: DishCardProps) {
 
   useEffect(() => {
     // 当菜品变化时重置图片尝试
-    setImgSrc(dish.image_url || `/images/${dish.name}.jpg`)
+    setImgSrc(withBase(dish.image_url || `/images/${dish.name}.jpg`))
     setAttempt(0)
   }, [dish.image_url, dish.name])
 
@@ -40,9 +45,9 @@ export function DishCard({ dish, isSelected, onToggle }: DishCardProps) {
       ? (dish.image_url || '').slice(0, (dish.image_url || '').lastIndexOf('.'))
       : `/images/${dish.name}`
     if (attempt < extOrder.length) {
-      return `${base}.${extOrder[attempt]}`
+      return withBase(`${base}.${extOrder[attempt]}`)
     }
-    return '/favicon.svg'
+    return withBase('/favicon.svg')
   }
 
   const handleImgError = () => {
