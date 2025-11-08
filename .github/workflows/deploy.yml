@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies (skip postinstall)
         run: npm install --legacy-peer-deps --ignore-scripts --no-audit --no-fund
 
+      - name: Rebuild esbuild binary
+        run: npm rebuild esbuild
+
       - name: Build
         run: npm run build
 
