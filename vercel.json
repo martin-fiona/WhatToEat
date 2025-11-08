@@ -1,6 +1,6 @@
 {
   "framework": "vite",
-  "installCommand": "npm install --legacy-peer-deps --no-audit --no-fund",
+  "installCommand": "npm install --legacy-peer-deps --ignore-scripts --no-audit --no-fund",
   "buildCommand": "npm rebuild esbuild && npm run build",
   "outputDirectory": "dist"
 }
