@@ -3,7 +3,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useDishStore } from '@/stores/dishStore'
 import { useShoppingCartStore } from '@/stores/shoppingCartStore'
 import { DishCard } from '@/components/DishCard'
-import { ShoppingCart, Users, Calendar, BarChart3, LogOut } from 'lucide-react'
+import { ShoppingCart, Users, Calendar, BarChart3, LogOut, ChevronLeft } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
@@ -302,6 +302,14 @@ export function HomePage() {
                 />
               ))}
             </div>
+            <button
+              aria-label="返回"
+              onClick={() => setActiveCategory(null)}
+              className="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-2 rounded-full shadow-lg bg-orange-500 text-white hover:bg-orange-600"
+            >
+              <ChevronLeft className="w-5 h-5" />
+              返回
+            </button>
           </div>
         )}
 
