@@ -10,15 +10,35 @@ import { supabase } from '@/lib/supabase'
 
 export function HomePage() {
   const { user, logout } = useAuthStore()
-  const { dishes, loading, loadDishes, selectedDishes, toggleDish, generateRandomMenu, clearSelectedDishes } = useDishStore()
+  const { dishes, loading, loadDishes, selectedDishes, toggleDish, generateRandomMenu, clearSelectedDishes, syncing, syncSource } = useDishStore()
   const { addIngredientsFromDishes } = useShoppingCartStore()
   const [diningCount, setDiningCount] = useState(2)
   const [generating, setGenerating] = useState(false)
+  // 分类浏览：为移动端提供先选择类别再浏览菜品的模式
+  const categoryOrder = ['荤菜', '半荤', '素菜', '汤品', '主食', '西餐', '糕点']
+  const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  const categoryMap = useMemo(() => {
+    const map = new Map<string, any[]>()
+    dishes.forEach(d => {
+      const key = d.category || '其他'
+      const arr = map.get(key) || []
+      arr.push(d)
+      map.set(key, arr)
+    })
+    return map
+  }, [dishes])
   const navigate = useNavigate()
 
   useEffect(() => {
     loadDishes()
   }, [])
+
+  // 恢复用户选择的菜品（刷新后仍保留）
+  useEffect(() => {
+    if (user?.id) {
+      useDishStore.getState().restoreSelected(user.id)
+    }
+  }, [user?.id])
 
   const handleRandomGenerate = async () => {
     setGenerating(true)
@@ -89,7 +109,7 @@ export function HomePage() {
   const handleLogout = async () => {
     try {
       await logout()
-      navigate('/login')
+      navigate('/auth')
     } catch (error) {
       toast.error('登出失败')
     }
@@ -175,7 +195,7 @@ export function HomePage() {
               disabled={selectedDishes.length === 0}
               className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 disabled:opacity-50"
             >
-              保存用餐记录
+              保存菜品记录
             </button>
             
             <button
@@ -196,9 +216,18 @@ export function HomePage() {
               </button>
             )}
           </div>
-          
+
           <div className="text-sm text-gray-600">
             已选择 {selectedDishes.length} 道菜，预计 {diningCount} 人用餐
+            {syncing ? (
+              <span className="ml-2 text-blue-600">同步中...</span>
+            ) : syncSource === 'cloud' ? (
+              <span className="ml-2 text-green-600">云端已同步</span>
+            ) : syncSource === 'local' ? (
+              <span className="ml-2 text-gray-500">本地缓存</span>
+            ) : syncSource === 'error' ? (
+              <span className="ml-2 text-red-600">同步失败（使用本地）</span>
+            ) : null}
           </div>
         </div>
 
@@ -207,8 +236,74 @@ export function HomePage() {
           <SelectedDishesBar dishes={dishes} selectedIds={selectedDishes} onRemove={(id) => toggleDish(id)} />
         )}
 
-        {/* Categorized Dishes */}
-        <CategorizedDishes dishes={dishes} selectedIds={selectedDishes} onToggle={toggleDish} />
+        {/* 分类导航（移动端友好）：先显示分类按钮，点击进入分类列表 */}
+        {activeCategory === null ? (
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">按类别浏览</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {categoryOrder.map((cat) => {
+                const count = (categoryMap.get(cat) || []).length
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveCategory(cat)}
+                    className="flex items-center justify-between w-full px-4 py-3 rounded-lg border hover:border-orange-500 hover:bg-orange-50 transition-colors"
+                  >
+                    <span className="text-gray-800 font-medium">{cat}</span>
+                    <span className="text-xs text-gray-500">{count} 道</span>
+                  </button>
+                )
+              })}
+            </div>
+            {/* 其他分类 */}
+            {(() => {
+              const extras = Array.from(categoryMap.keys()).filter(k => !categoryOrder.includes(k))
+              if (extras.length === 0) return null
+              return (
+                <div className="mt-6">
+                  <h3 className="text-sm text-gray-600 mb-2">其他分类</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {extras.map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => setActiveCategory(cat)}
+                        className="flex items-center justify-between w-full px-4 py-3 rounded-lg border hover:border-orange-500 hover:bg-orange-50 transition-colors"
+                      >
+                        <span className="text-gray-800 font-medium">{cat}</span>
+                        <span className="text-xs text-gray-500">{(categoryMap.get(cat) || []).length} 道</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+        ) : (
+          <div className="">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setActiveCategory(null)}
+                  className="px-3 py-2 rounded-md border bg-white hover:bg-gray-50 text-gray-700"
+                >
+                  返回
+                </button>
+                <h2 className="text-xl font-semibold text-gray-800">{activeCategory}</h2>
+              </div>
+              <span className="text-sm text-gray-500">共 {(categoryMap.get(activeCategory) || []).length} 道</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {(categoryMap.get(activeCategory) || []).map((dish) => (
+                <DishCard
+                  key={dish.id}
+                  dish={dish}
+                  isSelected={selectedDishes.includes(dish.id)}
+                  onToggle={() => toggleDish(dish.id)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
         {dishes.length === 0 && (
           <div className="text-center py-12">
