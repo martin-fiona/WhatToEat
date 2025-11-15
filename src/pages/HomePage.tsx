@@ -130,7 +130,7 @@ export function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-orange-600">今天吃什么</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-orange-600 whitespace-nowrap">今天吃什么</h1>
             </div>
             
             <nav className="flex items-center gap-3 sm:gap-4 overflow-x-auto whitespace-nowrap">
