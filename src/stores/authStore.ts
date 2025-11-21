@@ -30,6 +30,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         await import('@/stores/dishStore').then(m => m.useDishStore.getState().restoreSelected(userId))
         await import('@/stores/shoppingCartStore').then(m => m.useShoppingCartStore.getState().loadCart(userId))
         await import('@/stores/calendarStore').then(m => m.useCalendarStore.getState().loadMealHistory(userId))
+        await import('@/stores/calendarStore').then(m => m.useCalendarStore.getState().syncLocalToCloud(userId))
       }
     } catch (e) {
       console.warn('登录后恢复数据失败:', e)
@@ -69,6 +70,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         await import('@/stores/dishStore').then(m => m.useDishStore.getState().restoreSelected(userId))
         await import('@/stores/shoppingCartStore').then(m => m.useShoppingCartStore.getState().loadCart(userId))
         await import('@/stores/calendarStore').then(m => m.useCalendarStore.getState().loadMealHistory(userId))
+        await import('@/stores/calendarStore').then(m => m.useCalendarStore.getState().syncLocalToCloud(userId))
       }
     } catch {}
   },

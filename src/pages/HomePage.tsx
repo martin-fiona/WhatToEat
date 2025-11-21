@@ -7,12 +7,13 @@ import CustomDishModal from '@/components/CustomDishModal'
 import { ShoppingCart, Users, Calendar, BarChart3, LogOut, ChevronLeft, Plus } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { supabase } from '@/lib/supabase'
+import { supabase, isMockSupabase } from '@/lib/supabase'
 
 export function HomePage() {
   const { user, logout } = useAuthStore()
   const { dishes, loading, loadDishes, selectedDishes, toggleDish, generateRandomMenu, clearSelectedDishes, syncing, syncSource } = useDishStore()
   const { addIngredientsFromDishes } = useShoppingCartStore()
+  const cartCount = useShoppingCartStore((s) => s.ingredients.length)
   const [diningCount, setDiningCount] = useState(2)
   const [generating, setGenerating] = useState(false)
   const [openCustom, setOpenCustom] = useState(false)
@@ -81,7 +82,10 @@ export function HomePage() {
       toast.error('请先选择菜品')
       return
     }
-
+    if (!user?.id) {
+      toast.error('请先登录以保存到云端账户')
+      return
+    }
     try {
       // 计算营养合计（基于已加载的菜品数据）
       const picked = dishes.filter(d => selectedDishes.includes(d.id))
@@ -90,23 +94,57 @@ export function HomePage() {
       const total_carbs = picked.reduce((sum, d) => sum + (d.carbs || 0), 0)
       const total_fat = picked.reduce((sum, d) => sum + (d.fat || 0), 0)
 
+      const minimalDishes = picked.map(d => ({
+        id: d.id,
+        name: d.name,
+        category: d.category,
+        calories: d.calories || 0,
+        protein: d.protein || 0,
+        carbs: d.carbs || 0,
+        fat: d.fat || 0,
+        ingredients: d.ingredients || ''
+      }))
+
       const { error } = await supabase
         .from('meal_history')
         .insert([
           { 
-            user_id: user?.id, 
+            user_id: user.id, 
             dish_ids: selectedDishes, 
             meal_date: new Date().toISOString().split('T')[0],
-            dishes: picked,
+            dishes: minimalDishes,
             total_calories,
             total_protein,
             total_carbs,
             total_fat,
           }
         ])
-
-      if (error) throw error
-      toast.success('用餐记录已保存')
+      if (error) {
+        if (isMockSupabase) {
+          const key = `meal_history_${user.id}`
+          const raw = localStorage.getItem(key)
+          const arr = raw ? JSON.parse(raw) : []
+          const localItem = {
+            id: `local-${Date.now()}`,
+            user_id: user.id,
+            dish_ids: selectedDishes,
+            meal_date: new Date().toISOString().split('T')[0],
+            dishes: minimalDishes,
+            total_calories,
+            total_protein,
+            total_carbs,
+            total_fat,
+            created_at: new Date().toISOString(),
+          }
+          localStorage.setItem(key, JSON.stringify([localItem, ...arr]))
+          toast.success('当前为本地模式，已临时保存到本地')
+        } else {
+          toast.error('保存到云端失败，请检查账号登录与环境配置')
+          throw error
+        }
+      } else {
+        toast.success('用餐记录已保存到云端')
+      }
     } catch (error) {
       toast.error('保存用餐记录失败')
     }
@@ -202,9 +240,9 @@ export function HomePage() {
               <Link to="/cart" className="flex items-center gap-1 px-2 py-1 text-gray-600 hover:text-orange-600">
                 <ShoppingCart className="w-5 h-5" />
                 <span>购物车</span>
-                {selectedDishes.length > 0 && (
+                {cartCount > 0 && (
                   <span className="bg-orange-500 text-white text-xs rounded-full px-2 py-1">
-                    {selectedDishes.length}
+                    {cartCount}
                   </span>
                 )}
               </Link>
@@ -355,16 +393,16 @@ export function HomePage() {
           <div className="">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setActiveCategory(null)}
-                  className="px-3 py-2 rounded-md border bg-white hover:bg-gray-50 text-gray-700"
-                >
-                  返回
-                </button>
                 <h2 className="text-xl font-semibold text-gray-800">{activeCategory}</h2>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-sm text-gray-500">共 {(categoryMap.get(activeCategory) || []).length} 道</span>
+                <button
+                  onClick={() => { setDefaultCategoryForModal(activeCategory || undefined); setOpenCustom(true) }}
+                  className="px-3 py-2 rounded-md border bg-white hover:bg-orange-50 hover:border-orange-500 text-gray-700"
+                >
+                  自定义菜品
+                </button>
               </div>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -394,13 +432,7 @@ export function HomePage() {
         )}
       </main>
 
-      <button
-        aria-label="自定义菜品"
-        onClick={() => { setDefaultCategoryForModal(activeCategory || undefined); setOpenCustom(true) }}
-        className="fixed bottom-24 right-4 z-50 h-12 w-12 rounded-full bg-orange-500 text-white shadow-lg flex items-center justify-center hover:bg-orange-600 opacity-80 hover:opacity-100"
-      >
-        <Plus className="w-6 h-6" />
-      </button>
+      {/* 右下角加号按钮移除，根据需求不再显示 */}
 
       <CustomDishModal
         open={openCustom}
@@ -419,7 +451,10 @@ export function HomePage() {
             <div className="bg-white w-full max-w-3xl rounded-lg shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between px-4 py-3 border-b">
                 <h3 className="text-lg font-semibold text-gray-900">自定义菜品库</h3>
-                <button onClick={() => setOpenLibrary(false)} className="p-2 rounded hover:bg-gray-100">关闭</button>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => { setOpenLibrary(false); setDefaultCategoryForModal(undefined); setOpenCustom(true) }} className="px-3 py-2 rounded bg-orange-500 text-white hover:bg-orange-600">添加自定义菜品</button>
+                  <button onClick={() => setOpenLibrary(false)} className="p-2 rounded hover:bg-gray-100">关闭</button>
+                </div>
               </div>
               <div className="p-4 max-h-[70vh] overflow-y-auto">
                 {libraryLoading ? (
@@ -549,7 +584,7 @@ function SelectedDishesBar({ dishes, selectedIds, onRemove }: { dishes: any[]; s
             className="w-24 sm:w-28 aspect-square bg-gray-50 border rounded-md overflow-hidden relative flex-shrink-0 cursor-pointer hover:shadow"
             onClick={() => openModal(dish)}
           >
-            <img src={(import.meta as any).env.BASE_URL + (dish.image_url?.startsWith('/') ? dish.image_url.slice(1) : (dish.image_url || 'favicon.svg'))} alt={dish.name} className="w-full h-full object-cover" />
+            <img src={buildImgSrc(dish.image_url)} alt={dish.name} className="w-full h-full object-cover" />
             <div className="absolute bottom-0 left-0 right-0 bg-black/40 text-white px-2 py-1">
               <span className="truncate text-[10px] sm:text-xs">{dish.name}</span>
             </div>
@@ -577,7 +612,7 @@ function SelectedDishesBar({ dishes, selectedIds, onRemove }: { dishes: any[]; s
                 </button>
               </div>
               <div className="p-4 max-h-[70vh] overflow-y-auto">
-            <img src={(import.meta as any).env.BASE_URL + (activeDish.image_url?.startsWith('/') ? activeDish.image_url.slice(1) : (activeDish.image_url || 'favicon.svg'))} alt={activeDish.name} className="w-full h-56 object-cover rounded" />
+            <img src={buildImgSrc(activeDish.image_url)} alt={activeDish.name} className="w-full h-56 object-cover rounded" />
                 <div className="mt-4 flex items-center gap-2">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(activeDish.category)}`}>{activeDish.category}</span>
                   <span className="text-xs text-gray-500">热量：{activeDish.calories || 0} 卡</span>
@@ -637,3 +672,10 @@ function SelectedDishesBar({ dishes, selectedIds, onRemove }: { dishes: any[]; s
     </div>
   )
 }
+  const buildImgSrc = (path?: string) => {
+    const base = (import.meta as any).env.BASE_URL || '/'
+    if (!path) return base + 'favicon.svg'
+    if (/^https?:\/\//.test(path) || /^data:/.test(path)) return path
+    if (path.startsWith('/')) return base + path.slice(1)
+    return base + path
+  }

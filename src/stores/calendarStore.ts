@@ -19,6 +19,7 @@ interface CalendarState {
   loadMealHistory: (userId: string) => Promise<void>
   addMealHistory: (meal: Omit<MealHistory, 'id' | 'created_at'>) => Promise<void>
   deleteMealHistory: (mealId: string) => Promise<void>
+  syncLocalToCloud: (userId: string) => Promise<void>
 }
 
 export const useCalendarStore = create<CalendarState>((set, get) => ({
@@ -77,5 +78,42 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       console.error('删除用餐历史失败:', error)
       throw error
     }
+  },
+
+  syncLocalToCloud: async (userId: string) => {
+    try {
+      const key = `meal_history_${userId}`
+      const raw = localStorage.getItem(key)
+      const arr = raw ? JSON.parse(raw) : []
+      if (!Array.isArray(arr) || arr.length === 0) return
+      const items = arr.map((m: any) => ({
+        user_id: userId,
+        dish_ids: m.dish_ids,
+        meal_date: m.meal_date,
+        dishes: m.dishes,
+        total_calories: m.total_calories || 0,
+        total_protein: m.total_protein || 0,
+        total_carbs: m.total_carbs || 0,
+        total_fat: m.total_fat || 0,
+      }))
+      const { error } = await supabase
+        .from('meal_history')
+        .insert(items)
+      if (!error) {
+        localStorage.removeItem(key)
+        const { mealHistory } = get()
+        set({ mealHistory: [...items.map((m, idx) => ({
+          id: `synced-${Date.now()}-${idx}`,
+          user_id: m.user_id,
+          meal_date: m.meal_date,
+          dishes: m.dishes,
+          total_calories: m.total_calories,
+          total_protein: m.total_protein,
+          total_carbs: m.total_carbs,
+          total_fat: m.total_fat,
+          created_at: new Date().toISOString(),
+        })), ...mealHistory] })
+      }
+    } catch {}
   },
 }))
