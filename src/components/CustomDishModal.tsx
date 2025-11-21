@@ -84,13 +84,12 @@ export default function CustomDishModal({ open, onClose, onCreated }: Props) {
   }
 
   function guessIngredientsFromName(n: string) {
-    const base: string[] = ['盐', '食用油']
     const hits: string[] = []
     Object.keys(nutritionDict).forEach((k) => { if (n.includes(k)) hits.push(k) })
     if (n.includes('肉丝')) hits.push('猪肉')
     if (n.includes('鸡')) hits.push('鸡肉')
     if (n.includes('蛋')) hits.push('鸡蛋')
-    const unique = Array.from(new Set([...hits, ...base]))
+    const unique = Array.from(new Set(hits))
     return unique.join(', ')
   }
 
