@@ -170,33 +170,57 @@ export const useDishStore = create<DishState>((set, get) => ({
         return
       }
 
-      // 云端环境：正常读取数据 + 合并用户自定义菜品
+      // 云端环境：正常读取数据 + 合并用户自定义菜品（云端 + 本地回退）
       let merged = data || []
       try {
         const userId = useAuthStore.getState().user?.id
         if (userId) {
-          const { data: userDishes } = await supabase
+          const { data: userDishes, error: userErr } = await supabase
             .from('user_dishes')
             .select('*')
             .eq('user_id', userId)
             .order('name')
-          if (Array.isArray(userDishes)) {
-            const normalized = userDishes.map((d: any) => ({
-              id: d.id,
-              name: d.name,
-              category: d.category,
-              image_url: d.image_url,
-              ingredients: d.ingredients || '',
-              cooking_steps: d.cooking_steps || null,
-              calories: d.calories ?? null,
-              protein: d.protein ?? null,
-              carbs: d.carbs ?? null,
-              fat: d.fat ?? null,
-              is_meat: d.category === '荤菜' || d.category === '半荤',
-              created_at: d.created_at,
-            }))
-            merged = [...normalized, ...merged]
-          }
+          const cloudNormalized = Array.isArray(userDishes) ? userDishes.map((d: any) => ({
+            id: d.id,
+            name: d.name,
+            category: d.category,
+            image_url: d.image_url,
+            ingredients: d.ingredients || '',
+            cooking_steps: d.cooking_steps || null,
+            calories: d.calories ?? null,
+            protein: d.protein ?? null,
+            carbs: d.carbs ?? null,
+            fat: d.fat ?? null,
+            is_meat: d.category === '荤菜' || d.category === '半荤',
+            created_at: d.created_at,
+          })) : []
+
+          // 读取本地回退数据
+          const localKey = `user_dishes_${userId}`
+          let localNormalized: any[] = []
+          try {
+            const raw = localStorage.getItem(localKey)
+            const arr = raw ? JSON.parse(raw) : []
+            if (Array.isArray(arr)) {
+              localNormalized = arr.map((d: any) => ({
+                id: d.id,
+                name: d.name,
+                category: d.category,
+                image_url: d.image_url,
+                ingredients: d.ingredients || '',
+                cooking_steps: d.cooking_steps || null,
+                calories: d.calories ?? null,
+                protein: d.protein ?? null,
+                carbs: d.carbs ?? null,
+                fat: d.fat ?? null,
+                is_meat: d.category === '荤菜' || d.category === '半荤',
+                created_at: d.created_at,
+              }))
+            }
+          } catch {}
+
+          // 合并顺序：本地优先显示，再云端，再系统菜品
+          merged = [...localNormalized, ...cloudNormalized, ...merged]
         }
       } catch {}
       set({ dishes: merged })

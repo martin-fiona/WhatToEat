@@ -16,6 +16,10 @@ export function HomePage() {
   const [diningCount, setDiningCount] = useState(2)
   const [generating, setGenerating] = useState(false)
   const [openCustom, setOpenCustom] = useState(false)
+  const [defaultCategoryForModal, setDefaultCategoryForModal] = useState<string | undefined>(undefined)
+  const [openLibrary, setOpenLibrary] = useState(false)
+  const [libraryLoading, setLibraryLoading] = useState(false)
+  const [libraryItems, setLibraryItems] = useState<any[]>([])
   // 分类浏览：为移动端提供先选择类别再浏览菜品的模式
   const categoryOrder = ['荤菜', '半荤', '素菜', '汤品', '主食', '西餐', '糕点']
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
@@ -108,6 +112,65 @@ export function HomePage() {
     }
   }
 
+  const buildImgSrc = (path?: string) => {
+    const base = (import.meta as any).env.BASE_URL || '/'
+    if (!path) return base + 'favicon.svg'
+    if (/^https?:\/\//.test(path) || /^data:/.test(path)) return path
+    if (path.startsWith('/')) return base + path.slice(1)
+    return base + path
+  }
+
+  const openLibraryAndLoad = async () => {
+    if (!user?.id) {
+      toast.error('请先登录')
+      return
+    }
+    setOpenLibrary(true)
+    setLibraryLoading(true)
+    try {
+      const { data: cloud } = await supabase
+        .from('user_dishes')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('name')
+      const cloudItems = Array.isArray(cloud) ? cloud : []
+      const localKey = `user_dishes_${user.id}`
+      const raw = localStorage.getItem(localKey)
+      const localArr = raw ? JSON.parse(raw) : []
+      const localItems = Array.isArray(localArr) ? localArr : []
+      setLibraryItems([
+        ...localItems.map((d: any) => ({ ...d, _source: 'local' })),
+        ...cloudItems.map((d: any) => ({ ...d, _source: 'cloud' })),
+      ])
+    } catch {}
+    finally {
+      setLibraryLoading(false)
+    }
+  }
+
+  const deleteFromLibrary = async (item: any) => {
+    try {
+      if (item._source === 'local' || String(item.id).startsWith('local-')) {
+        const localKey = `user_dishes_${user!.id}`
+        const raw = localStorage.getItem(localKey)
+        const arr = raw ? JSON.parse(raw) : []
+        const next = Array.isArray(arr) ? arr.filter((d: any) => d.id !== item.id) : []
+        localStorage.setItem(localKey, JSON.stringify(next))
+      } else {
+        await supabase
+          .from('user_dishes')
+          .delete()
+          .eq('id', item.id)
+          .eq('user_id', user!.id)
+      }
+      await openLibraryAndLoad()
+      await loadDishes()
+      toast.success('已删除自定义菜品')
+    } catch (e) {
+      toast.error('删除失败')
+    }
+  }
+
   const handleLogout = async () => {
     try {
       await logout()
@@ -194,7 +257,7 @@ export function HomePage() {
             </button>
 
             <button
-              onClick={() => setOpenCustom(true)}
+              onClick={() => { setDefaultCategoryForModal(activeCategory || undefined); setOpenCustom(true) }}
               className="flex-shrink-0 text-sm bg-yellow-500 text-white px-3 py-2 rounded-md hover:bg-yellow-600"
             >
               自定义菜品
@@ -244,14 +307,24 @@ export function HomePage() {
               {categoryOrder.map((cat) => {
                 const count = (categoryMap.get(cat) || []).length
                 return (
-                  <button
-                    key={cat}
-                    onClick={() => setActiveCategory(cat)}
-                    className="flex items-center justify-between w-full px-4 py-3 rounded-lg border hover:border-orange-500 hover:bg-orange-50 transition-colors"
-                  >
-                    <span className="text-gray-800 font-medium">{cat}</span>
-                    <span className="text-xs text-gray-500">{count} 道</span>
-                  </button>
+                  <div key={cat} className="contents">
+                    <button
+                      onClick={() => setActiveCategory(cat)}
+                      className="flex items-center justify-between w-full px-4 py-3 rounded-lg border hover:border-orange-500 hover:bg-orange-50 transition-colors"
+                    >
+                      <span className="text-gray-800 font-medium">{cat}</span>
+                      <span className="text-xs text-gray-500">{count} 道</span>
+                    </button>
+                    {cat === '糕点' && (
+                      <button
+                        onClick={openLibraryAndLoad}
+                        className="flex items-center justify-between w-full px-4 py-3 rounded-lg border bg-white hover:bg-orange-50 hover:border-orange-500 transition-colors"
+                      >
+                        <span className="text-gray-800 font-medium">自定义菜品库</span>
+                        <span className="text-xs text-gray-500">管理</span>
+                      </button>
+                    )}
+                  </div>
                 )
               })}
             </div>
@@ -292,12 +365,6 @@ export function HomePage() {
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-sm text-gray-500">共 {(categoryMap.get(activeCategory) || []).length} 道</span>
-                <button
-                  onClick={() => setOpenCustom(true)}
-                  className="px-3 py-2 rounded-md border bg-white hover:bg-orange-50 hover:border-orange-500 text-gray-700"
-                >
-                  自定义菜品
-                </button>
               </div>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -313,10 +380,9 @@ export function HomePage() {
             <button
               aria-label="返回"
               onClick={() => setActiveCategory(null)}
-              className="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-2 rounded-full shadow-lg bg-orange-500 text-white hover:bg-orange-600"
+              className="fixed bottom-10 right-4 z-50 h-12 w-12 rounded-full shadow-lg bg-orange-500 text-white hover:bg-orange-600 opacity-80 hover:opacity-100 flex items-center justify-center"
             >
-              <ChevronLeft className="w-5 h-5" />
-              返回
+              <ChevronLeft className="w-6 h-6" />
             </button>
           </div>
         )}
@@ -330,8 +396,8 @@ export function HomePage() {
 
       <button
         aria-label="自定义菜品"
-        onClick={() => setOpenCustom(true)}
-        className="fixed bottom-16 right-4 z-50 h-12 w-12 rounded-full bg-orange-500 text-white shadow-lg flex items-center justify-center hover:bg-orange-600"
+        onClick={() => { setDefaultCategoryForModal(activeCategory || undefined); setOpenCustom(true) }}
+        className="fixed bottom-24 right-4 z-50 h-12 w-12 rounded-full bg-orange-500 text-white shadow-lg flex items-center justify-center hover:bg-orange-600 opacity-80 hover:opacity-100"
       >
         <Plus className="w-6 h-6" />
       </button>
@@ -343,7 +409,47 @@ export function HomePage() {
           loadDishes()
           setOpenCustom(false)
         }}
+        defaultCategory={defaultCategoryForModal}
       />
+
+      {openLibrary && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="absolute inset-0 flex items-center justify-center p-4" onClick={() => setOpenLibrary(false)}>
+            <div className="bg-white w-full max-w-3xl rounded-lg shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-4 py-3 border-b">
+                <h3 className="text-lg font-semibold text-gray-900">自定义菜品库</h3>
+                <button onClick={() => setOpenLibrary(false)} className="p-2 rounded hover:bg-gray-100">关闭</button>
+              </div>
+              <div className="p-4 max-h-[70vh] overflow-y-auto">
+                {libraryLoading ? (
+                  <div className="text-center py-8 text-gray-500">加载中...</div>
+                ) : libraryItems.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">暂无自定义菜品</div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {libraryItems.map((item) => (
+                      <div key={item.id} className="bg-gray-50 border rounded-md overflow-hidden">
+                        <img src={buildImgSrc(item.image_url)} alt={item.name} className="w-full h-24 object-cover" />
+                        <div className="p-2">
+                          <div className="text-sm font-medium truncate">{item.name}</div>
+                          <div className="text-xs text-gray-500 mb-2">{item.category}</div>
+                          <button
+                            onClick={() => deleteFromLibrary(item)}
+                            className="text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 w-full"
+                          >
+                            删除
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -436,28 +542,24 @@ function SelectedDishesBar({ dishes, selectedIds, onRemove }: { dishes: any[]; s
           <span>脂肪：{totals.total_fat} g</span>
         </div>
       </div>
-      <div className="flex gap-4 overflow-x-auto pb-2">
+      <div className="flex gap-3 overflow-x-auto pb-2">
         {selected.map((dish) => (
           <div
             key={dish.id}
-            className="min-w-[220px] bg-gray-50 border rounded-md p-3 flex-shrink-0 cursor-pointer hover:shadow"
+            className="w-24 sm:w-28 aspect-square bg-gray-50 border rounded-md overflow-hidden relative flex-shrink-0 cursor-pointer hover:shadow"
             onClick={() => openModal(dish)}
           >
-            <div className="flex gap-3">
-            <img src={(import.meta as any).env.BASE_URL + (dish.image_url?.startsWith('/') ? dish.image_url.slice(1) : (dish.image_url || 'favicon.svg'))} alt={dish.name} className="w-16 h-16 rounded object-cover" />
-              <div className="flex-1">
-                <div className="text-sm font-medium text-gray-800">
-                  {dish.name}
-                </div>
-                <div className="text-xs text-gray-500 mb-2">{dish.category}</div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onRemove(dish.id) }}
-                  className="text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
-                >
-                  删除
-                </button>
-              </div>
+            <img src={(import.meta as any).env.BASE_URL + (dish.image_url?.startsWith('/') ? dish.image_url.slice(1) : (dish.image_url || 'favicon.svg'))} alt={dish.name} className="w-full h-full object-cover" />
+            <div className="absolute bottom-0 left-0 right-0 bg-black/40 text-white px-2 py-1">
+              <span className="truncate text-[10px] sm:text-xs">{dish.name}</span>
             </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); onRemove(dish.id) }}
+              className="absolute top-1 right-1 bg-white/30 text-white rounded-full p-1 hover:bg-white/40 ring-1 ring-white/60"
+              aria-label="删除"
+            >
+              <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+            </button>
           </div>
         ))}
       </div>
@@ -487,7 +589,7 @@ function SelectedDishesBar({ dishes, selectedIds, onRemove }: { dishes: any[]; s
                 <div className="mt-6">
                   <h4 className="text-sm font-semibold text-gray-800 mb-2">食材</h4>
                   <div className="flex flex-wrap gap-2">
-                    {activeDish.ingredients.split(',').map((ing: string, idx: number) => (
+                    {activeDish.ingredients.split(/[,，]/).map((ing: string, idx: number) => (
                       <span key={idx} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
                         {ing.trim()}
                       </span>

@@ -14,7 +14,8 @@ export function DishCard({ dish, isSelected, onToggle }: DishCardProps) {
     if (!path) return ''
     const base = import.meta.env.BASE_URL || '/'
     const isHttp = /^https?:\/\//.test(path)
-    if (isHttp) return path
+    const isData = /^data:/.test(path)
+    if (isHttp || isData) return path
     if (path.startsWith('/')) return `${base}${path.slice(1)}`
     return `${base}${path}`
   }
@@ -69,8 +70,8 @@ export function DishCard({ dish, isSelected, onToggle }: DishCardProps) {
     }
   }
 
-  const ingredients = dish.ingredients.split(',').slice(0, 5)
-  const hasMoreIngredients = dish.ingredients.split(',').length > 5
+  const ingredients = dish.ingredients.split(/[,，]/).slice(0, 5)
+  const hasMoreIngredients = dish.ingredients.split(/[,，]/).length > 5
   const rawSteps = dish.cooking_steps || ''
   const isNumbered = /\d+\s*[、\.．。]/.test(rawSteps)
   const cookingSteps = (
@@ -161,7 +162,7 @@ export function DishCard({ dish, isSelected, onToggle }: DishCardProps) {
                 <div className="mt-6">
                   <h4 className="text-sm font-semibold text-gray-800 mb-2">食材</h4>
                   <div className="flex flex-wrap gap-2">
-                    {dish.ingredients.split(',').map((ing, idx) => (
+                    {dish.ingredients.split(/[,，]/).map((ing, idx) => (
                       <span key={idx} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
                         {ing.trim()}
                       </span>

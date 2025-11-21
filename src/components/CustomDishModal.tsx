@@ -7,6 +7,7 @@ interface Props {
   open: boolean
   onClose: () => void
   onCreated: () => void
+  defaultCategory?: string
 }
 
 function sanitize(input: string, maxLen: number) {
@@ -14,11 +15,12 @@ function sanitize(input: string, maxLen: number) {
   return trimmed.replace(/[<>]/g, '')
 }
 
-export default function CustomDishModal({ open, onClose, onCreated }: Props) {
+export default function CustomDishModal({ open, onClose, onCreated, defaultCategory }: Props) {
   const { user } = useAuthStore()
   const [name, setName] = useState('')
   const [category, setCategory] = useState('荤菜')
   const [ingredients, setIngredients] = useState('')
+  const [ingredientsList, setIngredientsList] = useState<string[]>([])
   const [calories, setCalories] = useState<string>('')
   const [carbs, setCarbs] = useState<string>('')
   const [protein, setProtein] = useState<string>('')
@@ -35,6 +37,20 @@ export default function CustomDishModal({ open, onClose, onCreated }: Props) {
     if (open) document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [open])
+
+  useEffect(() => {
+    if (open && defaultCategory) {
+      const list = ['荤菜', '半荤', '素菜', '汤品', '主食', '西餐', '糕点']
+      if (list.includes(defaultCategory)) {
+        setCategory(defaultCategory)
+      }
+    }
+  }, [open, defaultCategory])
+
+  useEffect(() => {
+    const joined = ingredientsList.map(i => i.replace(/，/g, ',').trim()).filter(Boolean).join(',')
+    setIngredients(joined.slice(0,200))
+  }, [ingredientsList])
 
   const categories = useMemo(() => ['荤菜', '半荤', '素菜', '汤品', '主食', '西餐', '糕点'], [])
 
@@ -60,6 +76,15 @@ export default function CustomDishModal({ open, onClose, onCreated }: Props) {
 
   
 
+  async function fileToDataUrl(f: File): Promise<string> {
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result))
+      reader.onerror = (e) => reject(e)
+      reader.readAsDataURL(f)
+    })
+  }
+
   const handleSubmit = async () => {
     if (!validate()) return
     setSubmitting(true)
@@ -73,27 +98,60 @@ export default function CustomDishModal({ open, onClose, onCreated }: Props) {
       let publicUrl: string | null = null
 
       if (!isMockSupabase) {
+        const bucket = import.meta.env.VITE_SUPABASE_BUCKET || 'dish-images'
         const path = `${user!.id}/${Date.now()}-${encodeURIComponent(file!.name)}`
         setProgress(30)
-        await retry(async () => {
-          const { error } = await supabase.storage.from('dish-images').upload(path, file!, {
-            contentType: file!.type,
-            upsert: false,
+        try {
+          await retry(async () => {
+            const { error } = await supabase.storage.from(bucket).upload(path, file!, {
+              contentType: file!.type,
+              upsert: false,
+            })
+            if (error) throw error
           })
-          if (error) throw error
-        })
-        setProgress(70)
-        const { data } = await supabase.storage.from('dish-images').getPublicUrl(path)
-        publicUrl = data.publicUrl
+          setProgress(70)
+          const { data } = await supabase.storage.from(bucket).getPublicUrl(path)
+          publicUrl = data.publicUrl
+        } catch (err: any) {
+          const msg = String(err?.message || '')
+          if (msg.includes('Bucket not found')) {
+            publicUrl = await fileToDataUrl(file!)
+          } else {
+            throw err
+          }
+        }
       } else {
         publicUrl = URL.createObjectURL(file!)
       }
 
       setProgress(80)
-      await retry(async () => {
-        const { error } = await supabase
-          .from('user_dishes')
-          .insert([{ 
+      try {
+        await retry(async () => {
+          const { error } = await supabase
+            .from('user_dishes')
+            .insert([{ 
+              user_id: user!.id,
+              name: safeName,
+              category,
+              image_url: publicUrl,
+              ingredients: safeIngredients,
+              cooking_steps,
+              calories: num(calories),
+              protein: num(protein),
+              carbs: num(carbs),
+              fat: num(fat),
+              is_meat: category === '荤菜' ? true : category === '半荤' ? true : false,
+            }])
+          if (error) throw error
+        })
+      } catch (err: any) {
+        const msg = String(err?.message || '')
+        if (msg.includes("Could not find the table 'public.user_dishes'") || msg.includes('relation "public.user_dishes" does not exist')) {
+          const localKey = `user_dishes_${user!.id}`
+          const raw = localStorage.getItem(localKey)
+          const arr = raw ? JSON.parse(raw) : []
+          const localDish = {
+            id: `local-${Date.now()}`,
             user_id: user!.id,
             name: safeName,
             category,
@@ -105,9 +163,13 @@ export default function CustomDishModal({ open, onClose, onCreated }: Props) {
             carbs: num(carbs),
             fat: num(fat),
             is_meat: category === '荤菜' ? true : category === '半荤' ? true : false,
-          }])
-        if (error) throw error
-      })
+            created_at: new Date().toISOString(),
+          }
+          localStorage.setItem(localKey, JSON.stringify([localDish, ...arr]))
+        } else {
+          throw err
+        }
+      }
 
       setProgress(100)
       onClose()
@@ -155,17 +217,33 @@ export default function CustomDishModal({ open, onClose, onCreated }: Props) {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">主要食材（选填，≤200）</label>
-                <input value={ingredients} onChange={(e) => setIngredients(e.target.value.slice(0,200))} className="w-full px-3 py-2 border rounded" placeholder="逗号分隔，如：鸡胸肉, 青椒" />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm font-medium text-gray-700">主要食材（选填）</label>
+                  <button type="button" onClick={() => setIngredientsList([...ingredientsList, ''])} className="text-xs px-2 py-1 rounded bg-orange-500 text-white hover:bg-orange-600 flex items-center gap-1"><Plus className="w-3 h-3" />添加食材</button>
+                </div>
+                <div className="space-y-2">
+                  {ingredientsList.map((ing, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <input value={ing} onChange={(e) => {
+                        const v = e.target.value.slice(0,40)
+                        setIngredientsList(ingredientsList.map((x,i)=> i===idx ? v : x))
+                      }} className="flex-1 px-3 py-2 border rounded" placeholder={`食材${idx+1}`} />
+                      <button type="button" onClick={() => setIngredientsList(ingredientsList.filter((_,i)=>i!==idx))} className="p-2 rounded bg-red-50 text-red-600 hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  ))}
+                  {ingredientsList.length === 0 && (
+                    <input value={ingredients} onChange={(e) => setIngredientsList(e.target.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean))} className="w-full px-3 py-2 border rounded" placeholder="可直接输入：鸡胸肉, 青椒（支持中英文逗号）" />
+                  )}
+                </div>
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">营养成分（选填）</label>
               <div className="grid grid-cols-4 gap-3">
                 <input value={calories} onChange={(e) => setCalories(e.target.value.replace(/[^\d.]/g,''))} placeholder="热量(卡)" className="px-3 py-2 border rounded" />
-                <input value={carbs} onChange={(e) => setCarbs(e.target.value.replace(/[^\d.]/g,''))} placeholder="碳水" className="px-3 py-2 border rounded" />
-                <input value={protein} onChange={(e) => setProtein(e.target.value.replace(/[^\d.]/g,''))} placeholder="蛋白质" className="px-3 py-2 border rounded" />
-                <input value={fat} onChange={(e) => setFat(e.target.value.replace(/[^\d.]/g,''))} placeholder="脂肪" className="px-3 py-2 border rounded" />
+                <input value={carbs} onChange={(e) => setCarbs(e.target.value.replace(/[^\d.]/g,''))} placeholder="碳水（克）" className="px-3 py-2 border rounded" />
+                <input value={protein} onChange={(e) => setProtein(e.target.value.replace(/[^\d.]/g,''))} placeholder="蛋白质（克）" className="px-3 py-2 border rounded" />
+                <input value={fat} onChange={(e) => setFat(e.target.value.replace(/[^\d.]/g,''))} placeholder="脂肪（克）" className="px-3 py-2 border rounded" />
               </div>
             </div>
             <div>
