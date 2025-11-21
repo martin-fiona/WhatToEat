@@ -1,0 +1,7 @@
+-- 扩展 meal_history 字段以匹配前端写入
+ALTER TABLE meal_history
+    ADD COLUMN IF NOT EXISTS dishes JSONB,
+    ADD COLUMN IF NOT EXISTS total_calories INTEGER DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS total_protein FLOAT DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS total_carbs FLOAT DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS total_fat FLOAT DEFAULT 0;

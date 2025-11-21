@@ -86,15 +86,20 @@ export const useShoppingCartStore = create<ShoppingCartState>((set, get) => ({
     try {
       const ingredientsJson = JSON.stringify(ingredients)
       
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('shopping_cart')
         .upsert({
           user_id: userId,
           ingredients_json: ingredientsJson,
           updated_at: new Date().toISOString()
-        })
+        }, { onConflict: 'user_id' })
+        .select('user_id, updated_at')
+        .single()
 
       if (error) throw error
+      if (!data || data.user_id !== userId) {
+        throw new Error('保存返回异常')
+      }
     } catch (error) {
       console.error('保存购物车失败:', error)
       throw error

@@ -1,4 +1,5 @@
-import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { useAuthStore } from "@/stores/authStore";
 import { AuthProvider } from "@/components/AuthProvider";
 import { AuthPage } from "@/pages/AuthPage";
 import { HomePage } from "@/pages/HomePage";
@@ -8,8 +9,15 @@ import { NutritionPage } from "@/pages/NutritionPage";
 import { Toaster } from "sonner";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const isAuthenticated = localStorage.getItem('sb-auth-token') !== null;
-  return isAuthenticated ? children : <Navigate to="/auth" replace />;
+  const { user, loading } = useAuthStore();
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">加载中...</div>
+      </div>
+    );
+  }
+  return user ? children : <Navigate to="/auth" replace />;
 }
 
 export default function App() {

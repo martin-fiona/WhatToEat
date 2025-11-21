@@ -1,5 +1,5 @@
 import Papa from 'papaparse'
-import { supabase } from '@/lib/supabase'
+import { supabase, isMockSupabase } from '@/lib/supabase'
 
 export interface Dish {
   name: string
@@ -57,6 +57,10 @@ export const importDishesToSupabase = async (dishes: Dish[]) => {
 
 export const loadDishesFromCSV = async () => {
   try {
+    // 仅在本地模拟数据库时执行导入与字段同步，云端环境不允许前端写入以避免触发RLS
+    if (!isMockSupabase) {
+      return
+    }
     const response = await fetch(`${import.meta.env.BASE_URL}recipes.csv`)
     const csvContent = await response.text()
     const dishes = await parseDishesFromCSV(csvContent)
