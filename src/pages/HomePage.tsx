@@ -306,7 +306,15 @@ export function HomePage() {
                 </button>
                 <h2 className="text-xl font-semibold text-gray-800">{activeCategory}</h2>
               </div>
-              <span className="text-sm text-gray-500">共 {(categoryMap.get(activeCategory) || []).length} 道</span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-500">共 {(categoryMap.get(activeCategory) || []).length} 道</span>
+                <button
+                  onClick={() => setOpenCustom(true)}
+                  className="px-3 py-2 rounded-md border bg-white hover:bg-orange-50 hover:border-orange-500 text-gray-700"
+                >
+                  自定义菜品
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {(categoryMap.get(activeCategory) || []).map((dish) => (
