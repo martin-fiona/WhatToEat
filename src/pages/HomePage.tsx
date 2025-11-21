@@ -132,11 +132,11 @@ export function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-xl sm:text-2xl font-bold text-orange-600 whitespace-nowrap">今天吃什么</h1>
+              <h1 className="text-lg sm:text-xl font-bold text-orange-600 whitespace-nowrap">今天吃什么</h1>
             </div>
-            
-            <nav className="flex items-center gap-3 sm:gap-4 overflow-x-auto whitespace-nowrap">
-              <Link to="/cart" className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-orange-600">
+
+            <nav className="flex items-center gap-2 overflow-x-auto whitespace-nowrap text-sm">
+              <Link to="/cart" className="flex items-center gap-1 px-2 py-1 text-gray-600 hover:text-orange-600">
                 <ShoppingCart className="w-5 h-5" />
                 <span>购物车</span>
                 {selectedDishes.length > 0 && (
@@ -145,25 +145,17 @@ export function HomePage() {
                   </span>
                 )}
               </Link>
-              <Link to="/calendar" className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-orange-600">
+              <Link to="/calendar" className="flex items-center gap-1 px-2 py-1 text-gray-600 hover:text-orange-600">
                 <Calendar className="w-5 h-5" />
                 <span>日历</span>
               </Link>
-              <Link to="/nutrition" className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-orange-600">
+              <Link to="/nutrition" className="flex items-center gap-1 px-2 py-1 text-gray-600 hover:text-orange-600">
                 <BarChart3 className="w-5 h-5" />
                 <span>分析</span>
               </Link>
               <button
-                onClick={() => setOpenCustom(true)}
-                className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-orange-600"
-              >
-                <Plus className="w-5 h-5" />
-                <span>自定义菜品</span>
-              </button>
-              {/** 设置入口已移除 */}
-              <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-red-600"
+                className="flex items-center gap-1 px-2 py-1 text-gray-600 hover:text-red-600"
               >
                 <LogOut className="w-5 h-5" />
                 <span>登出</span>
@@ -177,7 +169,7 @@ export function HomePage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Controls */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <div className="flex flex-wrap items-center gap-4 mb-4">
+          <div className="flex items-center gap-3 mb-3">
             <div className="flex items-center gap-2">
               <Users className="w-5 h-5 text-gray-600" />
               <span className="text-sm font-medium text-gray-700">用餐人数：</span>
@@ -187,64 +179,57 @@ export function HomePage() {
                 max="10"
                 value={diningCount}
                 onChange={(e) => setDiningCount(parseInt(e.target.value) || 1)}
-                className="w-16 px-2 py-1 border border-gray-300 rounded text-center"
+                className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm"
               />
             </div>
-            
+          </div>
+
+          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1">
             <button
               onClick={handleRandomGenerate}
               disabled={generating}
-              className="flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-md hover:bg-orange-600 disabled:opacity-50"
+              className="flex-shrink-0 text-sm bg-orange-500 text-white px-3 py-2 rounded-md hover:bg-orange-600 disabled:opacity-50"
             >
-              {generating ? '生成中...' : '随机生成菜单'}
+              {generating ? '生成中...' : '随机菜单'}
             </button>
 
             <button
               onClick={() => setOpenCustom(true)}
-              className="flex items-center gap-2 bg-white border px-4 py-2 rounded-md hover:border-orange-500 hover:bg-orange-50"
+              className="flex-shrink-0 text-sm bg-yellow-500 text-white px-3 py-2 rounded-md hover:bg-yellow-600"
             >
               自定义菜品
             </button>
-            
+
             <button
               onClick={handleSaveMeal}
               disabled={selectedDishes.length === 0}
-              className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 disabled:opacity-50"
+              className="flex-shrink-0 text-sm bg-green-500 text-white px-3 py-2 rounded-md hover:bg-green-600 disabled:opacity-50"
             >
               保存菜品记录
             </button>
-            
+
             <button
               onClick={handleAddToCart}
               disabled={selectedDishes.length === 0}
-              className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 disabled:opacity-50"
+              className="flex-shrink-0 text-sm bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600 disabled:opacity-50"
             >
               食材加入购物车
             </button>
-            {/* 覆盖购物车功能已移除 */}
-            
-            {selectedDishes.length > 0 && (
+          </div>
+
+          {selectedDishes.length > 0 && (
+            <div className="mt-2">
               <button
                 onClick={() => useDishStore.getState().clearSelected()}
-                className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600"
+                className="text-sm bg-gray-500 text-white px-3 py-2 rounded-md hover:bg-gray-600"
               >
                 清空选择
               </button>
-            )}
+            </div>
+          )}
           </div>
 
-          <div className="text-sm text-gray-600">
-            已选择 {selectedDishes.length} 道菜，预计 {diningCount} 人用餐
-            {syncing ? (
-              <span className="ml-2 text-blue-600">同步中...</span>
-            ) : syncSource === 'cloud' ? (
-              <span className="ml-2 text-green-600">云端已同步</span>
-            ) : syncSource === 'local' ? (
-              <span className="ml-2 text-gray-500">本地缓存</span>
-            ) : syncSource === 'error' ? (
-              <span className="ml-2 text-red-600">同步失败（使用本地）</span>
-            ) : null}
-          </div>
+          <div className="text-sm text-gray-600">已选择 {selectedDishes.length} 道菜，预计 {diningCount} 人用餐</div>
         </div>
 
         {/* Selected Dishes Summary */}
