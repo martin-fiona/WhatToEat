@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase, isMockSupabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
+import { generateDishInfo } from '@/lib/ai'
 import { Plus, X, UploadCloud, Trash2, ArrowUpDown, Sparkles } from 'lucide-react'
 
 interface Props {
@@ -19,6 +20,7 @@ export default function CustomDishModal({ open, onClose, onCreated }: Props) {
   const [name, setName] = useState('')
   const [category, setCategory] = useState('荤菜')
   const [ingredients, setIngredients] = useState('')
+  const [calories, setCalories] = useState<string>('')
   const [carbs, setCarbs] = useState<string>('')
   const [protein, setProtein] = useState<string>('')
   const [fat, setFat] = useState<string>('')
@@ -104,13 +106,16 @@ export default function CustomDishModal({ open, onClose, onCreated }: Props) {
   const handleAutoGenerate = async () => {
     setGenerating(true)
     try {
-      let ing = ingredients.trim()
-      if (!ing) ing = guessIngredientsFromName(name)
+      const ai = await generateDishInfo(name, category)
+      const ing = (ai.ingredients && ai.ingredients.trim()) ? ai.ingredients : (ingredients.trim() || guessIngredientsFromName(name))
       setIngredients(ing.slice(0,200))
       const est = estimateNutrition(ing)
-      if (!carbs) setCarbs(est.carbs)
-      if (!protein) setProtein(est.protein)
-      if (!fat) setFat(est.fat)
+      const cal = ai.calories ?? null
+      if (!calories && cal !== null) setCalories(String(cal))
+      if (!carbs) setCarbs(String(ai.carbs ?? est.carbs))
+      if (!protein) setProtein(String(ai.protein ?? est.protein))
+      if (!fat) setFat(String(ai.fat ?? est.fat))
+      if (ai.steps && ai.steps.length > 0 && steps.length === 0) setSteps(ai.steps.map(s => s.slice(0,300)))
     } finally {
       setGenerating(false)
     }
@@ -156,7 +161,7 @@ export default function CustomDishModal({ open, onClose, onCreated }: Props) {
             image_url: publicUrl,
             ingredients: safeIngredients,
             cooking_steps,
-            calories: null,
+            calories: num(calories),
             protein: num(protein),
             carbs: num(carbs),
             fat: num(fat),
@@ -222,7 +227,8 @@ export default function CustomDishModal({ open, onClose, onCreated }: Props) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">营养成分（克/100克，选填）</label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-4 gap-3">
+                <input value={calories} onChange={(e) => setCalories(e.target.value.replace(/[^\d.]/g,''))} placeholder="热量(卡/100g)" className="px-3 py-2 border rounded" />
                 <input value={carbs} onChange={(e) => setCarbs(e.target.value.replace(/[^\d.]/g,''))} placeholder="碳水" className="px-3 py-2 border rounded" />
                 <input value={protein} onChange={(e) => setProtein(e.target.value.replace(/[^\d.]/g,''))} placeholder="蛋白质" className="px-3 py-2 border rounded" />
                 <input value={fat} onChange={(e) => setFat(e.target.value.replace(/[^\d.]/g,''))} placeholder="脂肪" className="px-3 py-2 border rounded" />
