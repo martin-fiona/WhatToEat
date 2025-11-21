@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 
 let supabase: any = null
+let isMockSupabase = false
 
 type Row = Record<string, any>
 type TableStore = Record<string, Row[]>
@@ -158,7 +159,7 @@ function createMockSupabase() {
             const row: Row = state.payload
             let key = row.id
             // Use user_id as unique key for specific tables when id not provided
-            if (!key && (state.table === 'shopping_cart' || state.table === 'user_configs')) {
+            if (!key && (state.table === 'shopping_cart' || state.table === 'user_configs' || state.table === 'user_selections')) {
               key = row.user_id
               const idx = db[state.table].findIndex((r) => r.user_id === row.user_id)
               if (idx >= 0) {
@@ -208,21 +209,26 @@ function createMockSupabase() {
 }
 
 try {
-  const url = import.meta.env.VITE_SUPABASE_URL
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY
+  const fallbackUrl = 'https://moltbjqllkcqhezsejsu.supabase.co'
+  const fallbackKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vbHRianFsbGtjcWhlenNlanN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE5MDc4NzEsImV4cCI6MjA3NzQ4Mzg3MX0.S1wUblAVAd5tKfMO49LKGw3H6ESnoxq9UUEG8CGm_-A'
+  const url = (import.meta.env.VITE_SUPABASE_URL as string) || fallbackUrl
+  const key = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || fallbackKey
 
   if (isValidHttpUrl(url) && !!key && !isPlaceholder(url) && !isPlaceholder(key)) {
     supabase = createClient(url as string, key as string)
+    isMockSupabase = false
   } else {
     console.warn('Supabase环境变量未配置或无效，使用本地模拟客户端')
     supabase = createMockSupabase()
+    isMockSupabase = true
   }
 } catch (error) {
   console.error('Supabase初始化失败:', error)
   supabase = createMockSupabase()
+  isMockSupabase = true
 }
 
-export { supabase }
+export { supabase, isMockSupabase }
 
 export type Database = {
   public: {
@@ -245,12 +251,27 @@ export type Database = {
         Insert: Omit<Database['public']['Tables']['dishes']['Row'], 'id' | 'created_at'>
         Update: Partial<Database['public']['Tables']['dishes']['Row']>
       }
+      user_selections: {
+        Row: {
+          id: string
+          user_id: string
+          dish_ids: string[]
+          updated_at: string
+        }
+        Insert: Omit<Database['public']['Tables']['user_selections']['Row'], 'id' | 'updated_at'>
+        Update: Partial<Database['public']['Tables']['user_selections']['Row']>
+      }
       meal_history: {
         Row: {
           id: string
           user_id: string
           dish_ids: string[]
           meal_date: string
+          dishes: any[]
+          total_calories: number
+          total_protein: number
+          total_carbs: number
+          total_fat: number
           created_at: string
         }
         Insert: Omit<Database['public']['Tables']['meal_history']['Row'], 'id' | 'created_at'>
@@ -265,6 +286,25 @@ export type Database = {
         }
         Insert: Omit<Database['public']['Tables']['shopping_cart']['Row'], 'id' | 'updated_at'>
         Update: Partial<Database['public']['Tables']['shopping_cart']['Row']>
+      }
+      user_dishes: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          category: string
+          image_url: string | null
+          ingredients: string
+          cooking_steps: string | null
+          calories: number | null
+          protein: number | null
+          carbs: number | null
+          fat: number | null
+          is_meat: boolean | null
+          created_at: string
+        }
+        Insert: Omit<Database['public']['Tables']['user_dishes']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['user_dishes']['Row']>
       }
     }
   }
