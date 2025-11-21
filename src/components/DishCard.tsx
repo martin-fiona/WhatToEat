@@ -13,7 +13,10 @@ export function DishCard({ dish, isSelected, onToggle }: DishCardProps) {
   const withBase = (path: string) => {
     if (!path) return ''
     const base = import.meta.env.BASE_URL || '/'
-    return path.startsWith('/') ? `${base}${path.slice(1)}` : path
+    const isHttp = /^https?:\/\//.test(path)
+    if (isHttp) return path
+    if (path.startsWith('/')) return `${base}${path.slice(1)}`
+    return `${base}${path}`
   }
   const [imgSrc, setImgSrc] = useState<string>(withBase(dish.image_url || '/favicon.svg'))
   const [attempt, setAttempt] = useState<number>(0)
@@ -80,61 +83,59 @@ export function DishCard({ dish, isSelected, onToggle }: DishCardProps) {
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow" onClick={openModal}>
-      <div className="flex items-start p-4">
-        <div className="relative shrink-0">
-          <img
-            src={imgSrc}
-            onError={handleImgError}
-            alt={dish.name}
-            className="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded"
-          />
-          {isSelected && (
-            <div className="absolute -top-2 -right-2 bg-orange-500 text-white rounded-full p-1 shadow">
-              <Check className="w-5 h-5" />
-            </div>
-          )}
+      <div className="relative">
+        <img
+          src={imgSrc}
+          onError={handleImgError}
+          alt={dish.name}
+          className="w-full h-52 sm:h-60 object-cover"
+        />
+        {isSelected && (
+          <div className="absolute top-2 right-2 bg-orange-500 text-white rounded-full p-1">
+            <Check className="w-5 h-5" />
+          </div>
+        )}
+      </div>
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-800 cursor-pointer" onClick={(e) => { e.stopPropagation(); openModal() }}>{dish.name}</h3>
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(dish.category)}`}>
+            {dish.category}
+          </span>
         </div>
-        <div className="flex-1 pl-4">
-          <div className="flex items-center justify-between mb-1">
-            <h3 className="text-base sm:text-lg font-semibold text-gray-800 cursor-pointer" onClick={(e) => { e.stopPropagation(); openModal() }}>{dish.name}</h3>
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(dish.category)}`}>
-              {dish.category}
-            </span>
+        <div className="flex items-center gap-3 text-xs sm:text-sm text-gray-600 mb-3">
+          <div className="flex items-center gap-1">
+            <Clock className="w-4 h-4" />
+            <span>{dish.calories || 0} 卡</span>
           </div>
-          <div className="flex items-center gap-3 text-xs sm:text-sm text-gray-600 mb-2">
-            <div className="flex items-center gap-1">
-              <Clock className="w-4 h-4" />
-              <span>{dish.calories || 0} 卡</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Users className="w-4 h-4" />
-              <span>{dish.protein || 0}g 蛋白质</span>
-            </div>
+          <div className="flex items-center gap-1">
+            <Users className="w-4 h-4" />
+            <span>{dish.protein || 0}g 蛋白质</span>
           </div>
-          <div className="mb-3">
-            <p className="text-xs sm:text-sm text-gray-600 mb-1">主要食材：</p>
-            <div className="flex flex-wrap gap-1">
-              {ingredients.map((ingredient, index) => (
-                <span key={index} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                  {ingredient.trim()}
-                </span>
-              ))}
-              {hasMoreIngredients && (
-                <span className="text-xs text-gray-500">...</span>
-              )}
-            </div>
-          </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); onToggle() }}
-            className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
-              isSelected
-                ? 'bg-orange-500 text-white hover:bg-orange-600'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {isSelected ? '取消选择' : '选择菜品'}
-          </button>
         </div>
+        <div className="mb-4">
+          <p className="text-xs sm:text-sm text-gray-600 mb-2">主要食材：</p>
+          <div className="flex flex-wrap gap-1">
+            {ingredients.map((ingredient, index) => (
+              <span key={index} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                {ingredient.trim()}
+              </span>
+            ))}
+            {hasMoreIngredients && (
+              <span className="text-xs text-gray-500">...</span>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggle() }}
+          className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
+            isSelected
+              ? 'bg-orange-500 text-white hover:bg-orange-600'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          {isSelected ? '取消选择' : '选择菜品'}
+        </button>
       </div>
       {open && (
         <div className="fixed inset-0 z-50">
