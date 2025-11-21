@@ -1,6 +1,7 @@
 import { create } from 'zustand'
-import { supabase } from '@/lib/supabase'
-import { loadDishesFromCSV } from '@/utils/dishImporter'
+import { supabase, isMockSupabase } from '@/lib/supabase'
+import { useAuthStore } from '@/stores/authStore'
+import { loadDishesFromCSV, parseDishesFromCSV } from '@/utils/dishImporter'
 import { Database } from '@/lib/supabase'
 
 type Dish = Database['public']['Tables']['dishes']['Row']
@@ -9,41 +10,196 @@ interface DishState {
   dishes: Dish[]
   selectedDishes: string[]
   loading: boolean
+  syncing: boolean
+  syncSource: 'cloud' | 'local' | 'none' | 'error'
   loadDishes: () => Promise<void>
   toggleDish: (dishId: string) => void
+  clearSelectedDishes: () => void
   clearSelected: () => void
   generateRandomMenu: (diningCount: number) => void
+  restoreSelected: (userId?: string) => void
 }
 
 export const useDishStore = create<DishState>((set, get) => ({
   dishes: [],
   selectedDishes: [],
   loading: false,
+  syncing: false,
+  syncSource: 'none',
+
+  restoreSelected: async (userId?: string) => {
+    try {
+      if (!userId) return
+      set({ syncing: true })
+      // 优先从云端读取
+      const { data, error } = await supabase
+        .from('user_selections')
+        .select('dish_ids')
+        .eq('user_id', userId)
+        .single()
+
+      // 读取本地缓存，作为可能的上云来源
+      const key = `selected_dishes_${userId}`
+      const raw = localStorage.getItem(key)
+      const localParsed = raw ? JSON.parse(raw) : null
+
+      // 情况1：云端有数据
+      if (!error && data && Array.isArray(data.dish_ids)) {
+        const cloudIds = (data.dish_ids as string[]) || []
+        // 如果云端为空但本地有非空数据，则将本地数据上云，避免一直显示“本地缓存”
+        if (cloudIds.length === 0 && Array.isArray(localParsed) && localParsed.length > 0) {
+          try {
+            const { error: upErr } = await supabase
+              .from('user_selections')
+              .upsert({ user_id: userId, dish_ids: localParsed, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+            if (!upErr) {
+              set({ selectedDishes: localParsed, syncSource: 'cloud' })
+              localStorage.setItem(key, JSON.stringify(localParsed))
+              set({ syncing: false })
+              return
+            }
+          } catch {}
+        }
+        // 正常使用云端数据
+        set({ selectedDishes: cloudIds, syncSource: 'cloud' })
+        localStorage.setItem(key, JSON.stringify(cloudIds))
+        set({ syncing: false })
+        return
+      }
+
+      // 情况2：云端没有或查询出错，回退到本地缓存；若本地有数据则自动上云
+      if (Array.isArray(localParsed)) {
+        set({ selectedDishes: localParsed, syncSource: 'local' })
+        try {
+          const { error: upErr } = await supabase
+            .from('user_selections')
+            .upsert({ user_id: userId, dish_ids: localParsed, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+          if (!upErr) {
+            set({ syncSource: 'cloud' })
+          }
+        } catch {}
+      } else {
+        // 没有任何数据，初始化为空到云端，避免后续 upsert 冲突
+        try {
+          await supabase
+            .from('user_selections')
+            .upsert({ user_id: userId, dish_ids: [], updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+        } catch {}
+        set({ selectedDishes: [], syncSource: 'none' })
+      }
+    } catch (e) {
+      console.warn('恢复选择失败:', e)
+      set({ syncSource: 'error' })
+    } finally {
+      set({ syncing: false })
+    }
+  },
 
   loadDishes: async () => {
     set({ loading: true })
     try {
-      // 强制清理本地模拟数据库缓存，避免旧分类残留
-      try {
-        localStorage.removeItem('mock-supabase-db')
-        console.log('[DishStore] 清理本地mock数据库缓存完成')
-      } catch (e) {
-        console.warn('[DishStore] 清理缓存失败或不可用', e)
-      }
-
       const { data, error } = await supabase
         .from('dishes')
         .select('*')
         .order('name')
 
-      if (error) throw error
-      // 每次加载都执行一次CSV增量导入，以便用户追加新菜品后自动合并
-      await loadDishesFromCSV()
-      const { data: reloaded } = await supabase
-        .from('dishes')
-        .select('*')
-        .order('name')
-      set({ dishes: reloaded || data || [] })
+      // 如果云端读取报错，直接走 CSV 回退（仅展示，不写入云端）
+      if (error) {
+        try {
+          const response = await fetch(`${import.meta.env.BASE_URL}recipes.csv`)
+          const csvContent = await response.text()
+          const parsed = await parseDishesFromCSV(csvContent)
+          const fallbackRows = parsed.map((d: any) => ({
+            id: `csv-${encodeURIComponent(d.name)}`,
+            name: d.name,
+            category: d.category,
+            image_url: d.image_url,
+            ingredients: d.ingredients,
+            cooking_steps: d.cooking_steps,
+            calories: d.calories,
+            protein: d.protein,
+            carbs: d.carbs,
+            fat: d.fat,
+            is_meat: d.is_meat,
+            created_at: new Date().toISOString(),
+          }))
+          set({ dishes: fallbackRows })
+        } catch (e) {
+          console.warn('CSV 回退加载失败:', e)
+          set({ dishes: [] })
+        }
+        return
+      }
+
+      // 本地模拟环境：允许增量导入并再次读取
+      if (isMockSupabase) {
+        await loadDishesFromCSV()
+        const { data: reloaded } = await supabase
+          .from('dishes')
+          .select('*')
+          .order('name')
+        set({ dishes: reloaded || data || [] })
+        return
+      }
+
+      // 云端环境：若数据库为空，回退到 CSV 数据（仅用于展示，不写入云端）
+      if (!data || data.length === 0) {
+        try {
+          const response = await fetch(`${import.meta.env.BASE_URL}recipes.csv`)
+          const csvContent = await response.text()
+          const parsed = await parseDishesFromCSV(csvContent)
+          const fallbackRows = parsed.map((d: any) => ({
+            id: `csv-${encodeURIComponent(d.name)}`,
+            name: d.name,
+            category: d.category,
+            image_url: d.image_url,
+            ingredients: d.ingredients,
+            cooking_steps: d.cooking_steps,
+            calories: d.calories,
+            protein: d.protein,
+            carbs: d.carbs,
+            fat: d.fat,
+            is_meat: d.is_meat,
+            created_at: new Date().toISOString(),
+          }))
+          set({ dishes: fallbackRows })
+        } catch (e) {
+          console.warn('CSV 回退加载失败:', e)
+          set({ dishes: [] })
+        }
+        return
+      }
+
+      // 云端环境：正常读取数据 + 合并用户自定义菜品
+      let merged = data || []
+      try {
+        const userId = useAuthStore.getState().user?.id
+        if (userId) {
+          const { data: userDishes } = await supabase
+            .from('user_dishes')
+            .select('*')
+            .eq('user_id', userId)
+            .order('name')
+          if (Array.isArray(userDishes)) {
+            const normalized = userDishes.map((d: any) => ({
+              id: d.id,
+              name: d.name,
+              category: d.category,
+              image_url: d.image_url,
+              ingredients: d.ingredients || '',
+              cooking_steps: d.cooking_steps || null,
+              calories: d.calories ?? null,
+              protein: d.protein ?? null,
+              carbs: d.carbs ?? null,
+              fat: d.fat ?? null,
+              is_meat: d.category === '荤菜' || d.category === '半荤',
+              created_at: d.created_at,
+            }))
+            merged = [...normalized, ...merged]
+          }
+        }
+      } catch {}
+      set({ dishes: merged })
     } catch (error) {
       console.error('加载菜品失败:', error)
     } finally {
@@ -57,14 +213,60 @@ export const useDishStore = create<DishState>((set, get) => ({
       ? selectedDishes.filter(id => id !== dishId)
       : [...selectedDishes, dishId]
     set({ selectedDishes: newSelected })
+    try {
+      const userId = useAuthStore.getState().user?.id
+      if (userId) {
+        const key = `selected_dishes_${userId}`
+        localStorage.setItem(key, JSON.stringify(newSelected))
+        // 同步到云端
+        set({ syncing: true })
+        supabase
+          .from('user_selections')
+          .upsert({
+            user_id: userId,
+            dish_ids: newSelected,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' })
+          .select('user_id, updated_at')
+          .single()
+          .then(({ data, error }: any) => {
+            if (error) {
+              console.warn('云端同步失败:', error)
+              set({ syncSource: 'local' })
+              return
+            }
+            if (data && data.user_id === userId) {
+              set({ syncSource: 'cloud' })
+              localStorage.setItem(key, JSON.stringify(newSelected))
+            } else {
+              set({ syncSource: 'local' })
+            }
+          })
+          .finally(() => set({ syncing: false }))
+      }
+    } catch {}
   },
 
   clearSelectedDishes: () => {
     set({ selectedDishes: [] })
+    try {
+      const userId = useAuthStore.getState().user?.id
+      if (userId) {
+        const key = `selected_dishes_${userId}`
+        localStorage.setItem(key, JSON.stringify([]))
+      }
+    } catch {}
   },
 
   clearSelected: () => {
     set({ selectedDishes: [] })
+    try {
+      const userId = useAuthStore.getState().user?.id
+      if (userId) {
+        const key = `selected_dishes_${userId}`
+        localStorage.setItem(key, JSON.stringify([]))
+      }
+    } catch {}
   },
 
   generateRandomMenu: (diningCount: number) => {

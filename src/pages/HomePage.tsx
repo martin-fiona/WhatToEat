@@ -3,6 +3,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useDishStore } from '@/stores/dishStore'
 import { useShoppingCartStore } from '@/stores/shoppingCartStore'
 import { DishCard } from '@/components/DishCard'
+import CustomDishModal from '@/components/CustomDishModal'
 import { ShoppingCart, Users, Calendar, BarChart3, LogOut, ChevronLeft } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -14,6 +15,7 @@ export function HomePage() {
   const { addIngredientsFromDishes } = useShoppingCartStore()
   const [diningCount, setDiningCount] = useState(2)
   const [generating, setGenerating] = useState(false)
+  const [openCustom, setOpenCustom] = useState(false)
   // 分类浏览：为移动端提供先选择类别再浏览菜品的模式
   const categoryOrder = ['荤菜', '半荤', '素菜', '汤品', '主食', '西餐', '糕点']
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
@@ -189,6 +191,13 @@ export function HomePage() {
             >
               {generating ? '生成中...' : '随机生成菜单'}
             </button>
+
+            <button
+              onClick={() => setOpenCustom(true)}
+              className="flex items-center gap-2 bg-white border px-4 py-2 rounded-md hover:border-orange-500 hover:bg-orange-50"
+            >
+              自定义菜品
+            </button>
             
             <button
               onClick={handleSaveMeal}
@@ -319,6 +328,15 @@ export function HomePage() {
           </div>
         )}
       </main>
+
+      <CustomDishModal
+        open={openCustom}
+        onClose={() => setOpenCustom(false)}
+        onCreated={() => {
+          loadDishes()
+          setOpenCustom(false)
+        }}
+      />
     </div>
   )
 }
