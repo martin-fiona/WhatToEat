@@ -230,7 +230,6 @@ export function HomePage() {
           </div>
 
           <div className="text-sm text-gray-600">已选择 {selectedDishes.length} 道菜，预计 {diningCount} 人用餐</div>
-        </div>
 
         {/* Selected Dishes Summary */}
         {selectedDishes.length > 0 && (
