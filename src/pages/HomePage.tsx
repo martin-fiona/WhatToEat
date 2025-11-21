@@ -4,7 +4,7 @@ import { useDishStore } from '@/stores/dishStore'
 import { useShoppingCartStore } from '@/stores/shoppingCartStore'
 import { DishCard } from '@/components/DishCard'
 import CustomDishModal from '@/components/CustomDishModal'
-import { ShoppingCart, Users, Calendar, BarChart3, LogOut, ChevronLeft } from 'lucide-react'
+import { ShoppingCart, Users, Calendar, BarChart3, LogOut, ChevronLeft, Plus } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
@@ -328,6 +328,14 @@ export function HomePage() {
           </div>
         )}
       </main>
+
+      <button
+        aria-label="自定义菜品"
+        onClick={() => setOpenCustom(true)}
+        className="fixed bottom-16 right-4 z-50 h-12 w-12 rounded-full bg-orange-500 text-white shadow-lg flex items-center justify-center hover:bg-orange-600"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
 
       <CustomDishModal
         open={openCustom}
