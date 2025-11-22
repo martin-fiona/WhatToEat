@@ -223,6 +223,33 @@ export const useDishStore = create<DishState>((set, get) => ({
           merged = [...localNormalized, ...cloudNormalized, ...merged]
         }
       } catch {}
+
+      // 预览环境：在云端已有菜品的情况下，额外合并 CSV 中新增的菜品用于展示（不写入云端）
+      try {
+        const response = await fetch(`${import.meta.env.BASE_URL}recipes.csv`)
+        const csvContent = await response.text()
+        const parsed = await parseDishesFromCSV(csvContent)
+        const existingNames = new Set(merged.map((d: any) => d.name))
+        const extraRows = parsed
+          .filter((d: any) => d && d.name && !existingNames.has(d.name))
+          .map((d: any) => ({
+            id: `csv-${encodeURIComponent(d.name)}`,
+            name: d.name,
+            category: d.category,
+            image_url: d.image_url,
+            ingredients: d.ingredients || '',
+            cooking_steps: d.cooking_steps || null,
+            calories: d.calories ?? null,
+            protein: d.protein ?? null,
+            carbs: d.carbs ?? null,
+            fat: d.fat ?? null,
+            is_meat: d.category === '荤菜' || d.category === '半荤',
+            created_at: new Date().toISOString(),
+          }))
+        if (extraRows.length > 0) {
+          merged = [...extraRows, ...merged]
+        }
+      } catch {}
       set({ dishes: merged })
     } catch (error) {
       console.error('加载菜品失败:', error)

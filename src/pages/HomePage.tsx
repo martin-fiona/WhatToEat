@@ -12,7 +12,8 @@ import { supabase, isMockSupabase } from '@/lib/supabase'
 export function HomePage() {
   const { user, logout } = useAuthStore()
   const { dishes, loading, loadDishes, selectedDishes, toggleDish, generateRandomMenu, clearSelectedDishes, syncing, syncSource } = useDishStore()
-  const { addIngredientsFromDishes } = useShoppingCartStore()
+  const { addIngredientsFromDishes, saveCart } = useShoppingCartStore()
+  const hasSelection = selectedDishes.length > 0
   const cartCount = useShoppingCartStore((s) => s.ingredients.length)
   const [diningCount, setDiningCount] = useState(2)
   const [generating, setGenerating] = useState(false)
@@ -71,6 +72,11 @@ export function HomePage() {
     // 调试输出：调用前购物车状态
     console.log('[AddToCart] cart before:', useShoppingCartStore.getState().ingredients)
     addIngredientsFromDishes(picked)
+    try {
+      if (user?.id) {
+        saveCart(user.id)
+      }
+    } catch {}
     // 调试输出：调用后购物车状态
     console.log('[AddToCart] cart after:', useShoppingCartStore.getState().ingredients)
     toast.success(`已将 ${picked.length} 道菜的食材添加到购物车`)
@@ -88,7 +94,52 @@ export function HomePage() {
     }
     try {
       // 计算营养合计（基于已加载的菜品数据）
-      const picked = dishes.filter(d => selectedDishes.includes(d.id))
+      let picked = dishes.filter(d => selectedDishes.includes(d.id))
+
+      // 将本地自定义菜品（id 以 local- 开头）先同步到云端 user_dishes，并替换为云端 id
+      const localMap: Record<string, string> = {}
+      for (const d of picked) {
+        if (d.id && d.id.startsWith('local-')) {
+          const isMeat = d.category === '荤菜' || d.category === '半荤'
+          const { data: inserted, error: insErr } = await supabase
+            .from('user_dishes')
+            .insert([{ 
+              user_id: user!.id,
+              name: d.name,
+              category: d.category,
+              image_url: null,
+              ingredients: d.ingredients || '',
+              cooking_steps: d.cooking_steps || null,
+              calories: d.calories ?? null,
+              protein: d.protein ?? null,
+              carbs: d.carbs ?? null,
+              fat: d.fat ?? null,
+              is_meat: isMeat,
+            }])
+            .select('*')
+            .single()
+          if (insErr) {
+            throw insErr
+          }
+          localMap[d.id] = inserted.id
+        }
+      }
+
+      if (Object.keys(localMap).length > 0) {
+        // 替换选中列表与 picked 的 id 为云端 id
+        const replacedIds = selectedDishes.map(id => localMap[id] ? localMap[id] : id)
+        picked = picked.map(d => localMap[d.id] ? { ...d, id: localMap[d.id] } : d)
+        // 同步本地库：移除已同步的 local 项
+        try {
+          const key = `user_dishes_${user!.id}`
+          const raw = localStorage.getItem(key)
+          const arr = raw ? JSON.parse(raw) : []
+          const next = Array.isArray(arr) ? arr.filter((x: any) => !localMap[x.id]) : []
+          localStorage.setItem(key, JSON.stringify(next))
+        } catch {}
+        // 用替换后的 id 集合继续保存
+        selectedDishes.splice(0, selectedDishes.length, ...replacedIds)
+      }
       const total_calories = picked.reduce((sum, d) => sum + (d.calories || 0), 0)
       const total_protein = picked.reduce((sum, d) => sum + (d.protein || 0), 0)
       const total_carbs = picked.reduce((sum, d) => sum + (d.carbs || 0), 0)
@@ -105,12 +156,15 @@ export function HomePage() {
         ingredients: d.ingredients || ''
       }))
 
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      const dishIdsForDb = selectedDishes.filter(id => uuidRegex.test(id))
+
       const { error } = await supabase
         .from('meal_history')
         .insert([
           { 
             user_id: user.id, 
-            dish_ids: selectedDishes, 
+            dish_ids: dishIdsForDb, 
             meal_date: new Date().toISOString().split('T')[0],
             dishes: minimalDishes,
             total_calories,
@@ -303,7 +357,7 @@ export function HomePage() {
 
             <button
               onClick={handleSaveMeal}
-              disabled={selectedDishes.length === 0}
+              disabled={!hasSelection}
               className="flex-shrink-0 text-sm bg-green-500 text-white px-3 py-2 rounded-md hover:bg-green-600 disabled:opacity-50"
             >
               保存菜品记录
@@ -311,14 +365,14 @@ export function HomePage() {
 
             <button
               onClick={handleAddToCart}
-              disabled={selectedDishes.length === 0}
+              disabled={!hasSelection}
               className="flex-shrink-0 text-sm bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600 disabled:opacity-50"
             >
               食材加入购物车
             </button>
           </div>
 
-          {selectedDishes.length > 0 && (
+          {hasSelection && (
             <div className="mt-2">
               <button
                 onClick={() => useDishStore.getState().clearSelected()}
@@ -333,7 +387,7 @@ export function HomePage() {
           <div className="text-sm text-gray-600">已选择 {selectedDishes.length} 道菜，预计 {diningCount} 人用餐</div>
 
         {/* Selected Dishes Summary */}
-        {selectedDishes.length > 0 && (
+        {hasSelection && (
           <SelectedDishesBar dishes={dishes} selectedIds={selectedDishes} onRemove={(id) => toggleDish(id)} />
         )}
 
